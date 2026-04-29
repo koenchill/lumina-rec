@@ -1,0 +1,25 @@
+﻿[project]
+name = "lumina-rec"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi", 
+    "uvicorn[standard]", 
+    "pydantic", 
+    "slowapi", 
+    "redis", 
+    "feast", 
+    "mlflow", 
+    "onnxruntime", 
+    "evidently",
+    "pandas", 
+    "torch",
+    "pyarrow",
+]
+
+[project.optional-dependencies]
+ray = ["ray[serve]>=2.10.0"]
+dev = ["pytest", "black", "ruff"]
+
+[tool.uv]
+required-environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
