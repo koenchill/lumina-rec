@@ -7,6 +7,8 @@ from uuid import uuid4
 import torch
 import torch.nn as nn
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import Response
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
 MODEL_NAME = "lumina-rec-demo-model"
@@ -21,6 +23,21 @@ logging.basicConfig(
 logger = logging.getLogger("lumina-rec-inference")
 
 app = FastAPI(title="Lumina Rec Inference API", version=MODEL_VERSION)
+
+PREDICTION_REQUESTS = Counter(
+    "lumina_prediction_requests_total",
+    "Total number of prediction requests",
+)
+
+PREDICTION_ERRORS = Counter(
+    "lumina_prediction_errors_total",
+    "Total number of failed prediction requests",
+)
+
+PREDICTION_LATENCY = Histogram(
+    "lumina_prediction_latency_ms",
+    "Prediction latency in milliseconds",
+)
 
 
 class PredictionRequest(BaseModel):
@@ -79,6 +96,11 @@ def ready() -> dict[str, str]:
     }
 
 
+@app.get("/metrics")
+def metrics() -> Response:
+    return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
 @app.post("/predict", response_model=PredictionResponse)
 def predict(request: PredictionRequest) -> PredictionResponse:
     request_id = str(uuid4())
@@ -91,6 +113,9 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             prediction = model(x).item()
 
         latency_ms = round((time() - start_time) * 1000, 2)
+
+        PREDICTION_REQUESTS.inc()
+        PREDICTION_LATENCY.observe(latency_ms)
 
         log_event(
             "prediction_completed",
@@ -111,6 +136,7 @@ def predict(request: PredictionRequest) -> PredictionResponse:
 
     except Exception as exc:
         latency_ms = round((time() - start_time) * 1000, 2)
+        PREDICTION_ERRORS.inc()
 
         log_event(
             "prediction_failed",

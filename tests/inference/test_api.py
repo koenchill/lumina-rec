@@ -14,9 +14,12 @@ def test_health_endpoint():
 
 def test_ready_endpoint():
     response = client.get("/ready")
+    body = response.json()
 
     assert response.status_code == 200
-    assert response.json()["status"] == "ready"
+    assert body["status"] == "ready"
+    assert body["model_name"] == "lumina-rec-demo-model"
+    assert body["model_version"] == "0.1.0"
 
 
 def test_predict_endpoint():
@@ -27,8 +30,8 @@ def test_predict_endpoint():
 
     assert response.status_code == 200
     assert "prediction" in body
-    assert "model_name" in body
-    assert "model_version" in body
+    assert body["model_name"] == "lumina-rec-demo-model"
+    assert body["model_version"] == "0.1.0"
     assert "request_id" in body
     assert "latency_ms" in body
 
@@ -39,3 +42,12 @@ def test_predict_rejects_bad_feature_length():
     response = client.post("/predict", json=payload)
 
     assert response.status_code == 422
+
+
+def test_metrics_endpoint():
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "lumina_prediction_requests_total" in response.text
+    assert "lumina_prediction_errors_total" in response.text
+    assert "lumina_prediction_latency_ms" in response.text
