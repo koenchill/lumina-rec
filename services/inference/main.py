@@ -1,3 +1,4 @@
+import json
 import logging
 from pathlib import Path
 from time import time
@@ -8,9 +9,18 @@ import torch.nn as nn
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, Field
 
+MODEL_NAME = "lumina-rec-demo-model"
+MODEL_VERSION = "0.1.0"
 MODEL_PATH = Path("ml/models/demo_model.pt")
 
-app = FastAPI(title="Lumina Rec Inference API", version="0.1.0")
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s %(levelname)s %(message)s",
+)
+
+logger = logging.getLogger("lumina-rec-inference")
+
+app = FastAPI(title="Lumina Rec Inference API", version=MODEL_VERSION)
 
 
 class PredictionRequest(BaseModel):
@@ -25,6 +35,11 @@ class PredictionResponse(BaseModel):
     latency_ms: float
 
 
+def log_event(event_name: str, **fields) -> None:
+    log_record = {"event": event_name, **fields}
+    logger.info(json.dumps(log_record))
+
+
 def load_model() -> nn.Module:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
@@ -33,6 +48,14 @@ def load_model() -> nn.Module:
     state_dict = torch.load(MODEL_PATH, map_location="cpu")
     model.load_state_dict(state_dict)
     model.eval()
+
+    log_event(
+        "model_loaded",
+        model_name=MODEL_NAME,
+        model_version=MODEL_VERSION,
+        model_path=str(MODEL_PATH),
+    )
+
     return model
 
 
@@ -49,7 +72,11 @@ def ready() -> dict[str, str]:
     if model is None:
         raise HTTPException(status_code=503, detail="Model is not loaded")
 
-    return {"status": "ready"}
+    return {
+        "status": "ready",
+        "model_name": MODEL_NAME,
+        "model_version": MODEL_VERSION,
+    }
 
 
 @app.post("/predict", response_model=PredictionResponse)
@@ -65,13 +92,34 @@ def predict(request: PredictionRequest) -> PredictionResponse:
 
         latency_ms = round((time() - start_time) * 1000, 2)
 
+        log_event(
+            "prediction_completed",
+            request_id=request_id,
+            model_name=MODEL_NAME,
+            model_version=MODEL_VERSION,
+            latency_ms=latency_ms,
+            status="success",
+        )
+
         return PredictionResponse(
             prediction=prediction,
-            model_name="lumina-rec-demo-model",
-            model_version="0.1.0",
+            model_name=MODEL_NAME,
+            model_version=MODEL_VERSION,
             request_id=request_id,
             latency_ms=latency_ms,
         )
 
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        latency_ms = round((time() - start_time) * 1000, 2)
+
+        log_event(
+            "prediction_failed",
+            request_id=request_id,
+            model_name=MODEL_NAME,
+            model_version=MODEL_VERSION,
+            latency_ms=latency_ms,
+            status="error",
+            error=str(exc),
+        )
+
+        raise HTTPException(status_code=500, detail="Prediction failed")
