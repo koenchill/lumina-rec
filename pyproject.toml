@@ -1,25 +1,20 @@
 ﻿[project]
 name = "lumina-rec"
 version = "0.1.0"
+description = "Local MLOps recommendation system with MLflow, FastAPI, and Feast."
 requires-python = ">=3.11"
+
 dependencies = [
-    "fastapi", 
-    "uvicorn[standard]", 
-    "pydantic", 
-    "slowapi", 
-    "redis", 
-    "feast", 
-    "mlflow", 
-    "onnxruntime", 
-    "evidently",
-    "pandas", 
+    "fastapi",
+    "uvicorn",
     "torch",
-    "pyarrow",
+    "pydantic",
+    "mlflow",
+    "boto3",
+    "pytest",
+    "httpx"
 ]
 
-[project.optional-dependencies]
-ray = ["ray[serve]>=2.10.0"]
-dev = ["pytest", "black", "ruff"]
-
-[tool.uv]
-required-environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
