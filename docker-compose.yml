@@ -1,5 +1,15 @@
 ﻿version: '3.9'
 services:
+  inference:
+    build:
+      context: .
+      dockerfile: services/inference/Dockerfile
+    ports:
+      - "8001:8000"
+    depends_on:
+      - mlflow
+    environment:
+      MODEL_PATH: /app/ml/models/demo_model.pt
   localstack:
     image: localstack/localstack:3.0
     ports:
