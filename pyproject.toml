@@ -1,7 +1,7 @@
 [project]
 name = "lumina-rec"
 version = "0.1.0"
-description = "Local MLOps recommendation system with MLflow, FastAPI, and Feast."
+description = "Local MLOps recommendation system with MLflow, FastAPI, Feast, and Prometheus metrics."
 requires-python = ">=3.11"
 
 dependencies = [
@@ -12,7 +12,8 @@ dependencies = [
     "mlflow",
     "boto3",
     "pytest",
-    "httpx"
+    "httpx",
+    "prometheus-client"
 ]
 
 [tool.pytest.ini_options]
