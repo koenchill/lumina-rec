@@ -9,9 +9,9 @@
 | Model type | Matrix factorization |
 | Framework | PyTorch |
 | Dataset | MovieLens latest small |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
-| Artifact path | approved_model |
-| SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
 
 ## Intended Use
 
