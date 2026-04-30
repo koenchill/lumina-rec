@@ -1,4 +1,9 @@
+import os
+
 from locust import HttpUser, between, task
+
+API_KEY = os.getenv("LUMINA_API_KEY", "local-dev-api-key")
+API_HEADERS = {"x-api-key": API_KEY}
 
 
 class InferenceUser(HttpUser):
@@ -11,8 +16,8 @@ class InferenceUser(HttpUser):
         with self.client.post(
             "/predict",
             json=payload,
+            headers=API_HEADERS,
             catch_response=True,
-            headers={"x-api-key": "local-dev-api-key"},
         ) as response:
             if response.status_code != 200:
                 response.failure(f"Unexpected status code: {response.status_code}")
