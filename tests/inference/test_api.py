@@ -20,28 +20,32 @@ def test_ready_endpoint():
 
     assert response.status_code == 200
     assert body["status"] == "ready"
-    assert body["model_name"] == "lumina-rec-demo-model"
-    assert body["model_version"] == "0.1.0"
+    assert body["model_name"] == "lumina-rec-movielens-mf"
+    assert body["model_version"] == "0.2.0"
+    assert body["model_run_id"] == "248c55bf41994c05923a86e354158303"
+    assert body["model_artifact_path"] == "approved_model"
     assert "model_sha256" in body
     assert body["checksum_validation"] in ["enabled", "not_configured"]
 
 
 def test_predict_endpoint():
-    {"user_id": 1, "movie_id": 1}
+    payload = {"user_id": 1, "movie_id": 1}
 
     response = client.post("/predict", json=payload, headers=API_HEADERS)
     body = response.json()
 
     assert response.status_code == 200
-    assert "prediction" in body
-    assert body["model_name"] == "lumina-rec-demo-model"
-    assert body["model_version"] == "0.1.0"
+    assert "predicted_rating" in body
+    assert body["user_id"] == 1
+    assert body["movie_id"] == 1
+    assert body["model_name"] == "lumina-rec-movielens-mf"
+    assert body["model_version"] == "0.2.0"
     assert "request_id" in body
     assert "latency_ms" in body
 
 
 def test_predict_rejects_missing_api_key():
-    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+    payload = {"user_id": 1, "movie_id": 1}
 
     response = client.post("/predict", json=payload)
 
@@ -49,7 +53,7 @@ def test_predict_rejects_missing_api_key():
 
 
 def test_predict_rejects_bad_api_key():
-    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+    payload = {"user_id": 1, "movie_id": 1}
 
     response = client.post(
         "/predict",
@@ -60,12 +64,28 @@ def test_predict_rejects_bad_api_key():
     assert response.status_code == 401
 
 
-def test_predict_rejects_bad_feature_length():
-    payload = {"features": [1, 2, 3]}
+def test_predict_rejects_missing_required_field():
+    payload = {"user_id": 1}
 
     response = client.post("/predict", json=payload, headers=API_HEADERS)
 
     assert response.status_code == 422
+
+
+def test_predict_rejects_unknown_user_id():
+    payload = {"user_id": 999999999, "movie_id": 1}
+
+    response = client.post("/predict", json=payload, headers=API_HEADERS)
+
+    assert response.status_code == 404
+
+
+def test_predict_rejects_unknown_movie_id():
+    payload = {"user_id": 1, "movie_id": 999999999}
+
+    response = client.post("/predict", json=payload, headers=API_HEADERS)
+
+    assert response.status_code == 404
 
 
 def test_metrics_endpoint():
