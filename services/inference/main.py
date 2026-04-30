@@ -79,6 +79,16 @@ def log_event(event_name: str, **fields) -> None:
     logger.info(json.dumps(log_record))
 
 
+def calculate_sha256(file_path: Path) -> str:
+    sha256 = hashlib.sha256()
+
+    with file_path.open("rb") as file:
+        for chunk in iter(lambda: file.read(8192), b""):
+            sha256.update(chunk)
+
+    return sha256.hexdigest()
+
+
 @app.exception_handler(RateLimitExceeded)
 def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     RATE_LIMIT_ERRORS.inc()
@@ -101,9 +111,23 @@ def verify_api_key(x_api_key: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
-def load_model() -> nn.Module:
+def load_model() -> tuple[nn.Module, str]:
     if not MODEL_PATH.exists():
         raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+
+    actual_sha256 = calculate_sha256(MODEL_PATH)
+
+    if MODEL_SHA256 and actual_sha256 != MODEL_SHA256:
+        log_event(
+            "model_checksum_failed",
+            model_name=MODEL_NAME,
+            model_version=MODEL_VERSION,
+            model_path=str(MODEL_PATH),
+            expected_sha256=MODEL_SHA256,
+            actual_sha256=actual_sha256,
+            status="error",
+        )
+        raise ValueError("Model checksum validation failed")
 
     model = nn.Linear(10, 1)
     state_dict = torch.load(MODEL_PATH, map_location="cpu")
@@ -115,12 +139,14 @@ def load_model() -> nn.Module:
         model_name=MODEL_NAME,
         model_version=MODEL_VERSION,
         model_path=str(MODEL_PATH),
+        model_sha256=actual_sha256,
+        checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
     )
 
-    return model
+    return model, actual_sha256
 
 
-model = load_model()
+model, model_actual_sha256 = load_model()
 
 
 @app.get("/health")
@@ -137,6 +163,8 @@ def ready() -> dict[str, str]:
         "status": "ready",
         "model_name": MODEL_NAME,
         "model_version": MODEL_VERSION,
+        "model_sha256": model_actual_sha256,
+        "checksum_validation": "enabled" if MODEL_SHA256 else "not_configured",
     }
 
 
