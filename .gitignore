@@ -2,4 +2,13 @@
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
 ml/models/*.pt
+
+tests/load/load_test_report.html
+
+.DS_Store
+Thumbs.db
