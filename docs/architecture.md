@@ -1,40 +1,26 @@
-# Lumina Rec Architecture
+## Architecture Diagram
 
-## Purpose
+```mermaid
+flowchart LR
+    Developer[Developer]
+    Train[PyTorch Training Script]
+    MLflow[MLflow Tracking Server]
+    Postgres[(Postgres Metadata Store)]
+    MinIO[(MinIO Artifact Store)]
+    Client[Client]
+    API[FastAPI Inference API]
+    Model[Validated PyTorch Model]
+    Metrics[Prometheus Metrics]
+    Logs[Structured JSON Logs]
 
-Lumina Rec is a local MLOps recommendation system that demonstrates model training, experiment tracking, artifact storage, containerized inference, observability, and security controls.
+    Developer --> Train
+    Train --> MLflow
+    MLflow --> Postgres
+    MLflow --> MinIO
 
-## High Level Flow
-
-```text
-Developer
-   |
-   | runs training
-   v
-PyTorch Training Script
-   |
-   | logs params, metrics, and artifacts
-   v
-MLflow Tracking Server
-   |
-   | stores metadata
-   v
-Postgres
-   |
-   | stores artifacts
-   v
-MinIO
-
-Client
-   |
-   | POST /predict with x-api-key
-   v
-FastAPI Inference API
-   |
-   | loads validated model artifact
-   v
-PyTorch Model
-   |
-   | returns prediction response
-   v
-Client
+    Client -->|POST /predict with x-api-key| API
+    API -->|loads checksum validated model| Model
+    Model --> API
+    API --> Client
+    API --> Metrics
+    API --> Logs
