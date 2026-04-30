@@ -20,3 +20,29 @@ The local stack includes:
 
 ```powershell
 docker compose up -d --build
+
+## Current Capabilities
+
+- PyTorch baseline model training
+- MLflow experiment tracking
+- MinIO artifact storage
+- FastAPI inference API
+- API key authentication on `/predict`
+- Configurable rate limiting
+- Model checksum validation
+- Prometheus metrics at `/metrics`
+- Structured JSON logs
+- Docker Compose local stack
+- CPU only PyTorch inference image
+- Pytest API tests
+- Locust load testing
+- GitHub Actions CI with tests, Docker build, health checks, secret scan, and container scan
+
+## Common Commands
+
+```powershell
+.\scripts\lumina.ps1 up
+.\scripts\lumina.ps1 ready
+.\scripts\lumina.ps1 predict
+.\scripts\lumina.ps1 test
+.\scripts\lumina.ps1 load-test
