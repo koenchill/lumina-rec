@@ -8,10 +8,15 @@ from uuid import uuid4
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
+from slowapi import Limiter
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.util import get_remote_address
+from starlette.responses import JSONResponse
 
 load_dotenv()
 
@@ -19,6 +24,7 @@ MODEL_NAME = "lumina-rec-demo-model"
 MODEL_VERSION = "0.1.0"
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "ml/models/demo_model.pt"))
 API_KEY = os.getenv("LUMINA_API_KEY", "local-dev-api-key")
+RATE_LIMIT = os.getenv("LUMINA_RATE_LIMIT", "30/minute")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,7 +33,11 @@ logging.basicConfig(
 
 logger = logging.getLogger("lumina-rec-inference")
 
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(title="Lumina Rec Inference API", version=MODEL_VERSION)
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
 
 PREDICTION_REQUESTS = Counter(
     "lumina_prediction_requests_total",
@@ -42,6 +52,11 @@ PREDICTION_ERRORS = Counter(
 PREDICTION_LATENCY = Histogram(
     "lumina_prediction_latency_ms",
     "Prediction latency in milliseconds",
+)
+
+RATE_LIMIT_ERRORS = Counter(
+    "lumina_rate_limit_errors_total",
+    "Total number of rate limited requests",
 )
 
 
@@ -60,6 +75,22 @@ class PredictionResponse(BaseModel):
 def log_event(event_name: str, **fields) -> None:
     log_record = {"event": event_name, **fields}
     logger.info(json.dumps(log_record))
+
+
+@app.exception_handler(RateLimitExceeded)
+def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
+    RATE_LIMIT_ERRORS.inc()
+
+    log_event(
+        "rate_limit_exceeded",
+        client=get_remote_address(request),
+        status="error",
+    )
+
+    return JSONResponse(
+        status_code=429,
+        content={"detail": "Rate limit exceeded"},
+    )
 
 
 def verify_api_key(x_api_key: str | None) -> None:
@@ -113,8 +144,10 @@ def metrics() -> Response:
 
 
 @app.post("/predict", response_model=PredictionResponse)
+@limiter.limit(RATE_LIMIT)
 def predict(
-    request: PredictionRequest,
+    request: Request,
+    prediction_request: PredictionRequest,
     x_api_key: str | None = Header(default=None),
 ) -> PredictionResponse:
     request_id = str(uuid4())
@@ -123,7 +156,7 @@ def predict(
     try:
         verify_api_key(x_api_key)
 
-        x = torch.tensor([request.features], dtype=torch.float32)
+        x = torch.tensor([prediction_request.features], dtype=torch.float32)
 
         with torch.no_grad():
             prediction = model(x).item()
