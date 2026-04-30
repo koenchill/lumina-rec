@@ -22,6 +22,9 @@ The validated stack includes:
 - Docker Compose orchestration
 - Health and readiness checks
 - Prometheus style metrics
+- API key authentication for predictions
+- Configurable rate limiting
+- Model checksum validation
 - Automated API tests
 - Locust load testing
 
