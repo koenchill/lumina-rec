@@ -1,7 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("up", "down", "ps", "logs", "train", "test", "build-inference", "health", "ready", "metrics", "predict")]
-    [string]$Task
+    [ValidateSet("up", "down", "ps", "logs", "train", "test", "build-inference", "health", "ready", "metrics", "predict", "load-test")]
 )
 
 switch ($Task) {
