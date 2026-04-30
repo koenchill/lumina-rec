@@ -1,19 +1,24 @@
 import json
 import logging
+import os
 from pathlib import Path
 from time import time
 from uuid import uuid4
 
 import torch
 import torch.nn as nn
-from fastapi import FastAPI, HTTPException
+from dotenv import load_dotenv
+from fastapi import FastAPI, Header, HTTPException
 from fastapi.responses import Response
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 
+load_dotenv()
+
 MODEL_NAME = "lumina-rec-demo-model"
 MODEL_VERSION = "0.1.0"
-MODEL_PATH = Path("ml/models/demo_model.pt")
+MODEL_PATH = Path(os.getenv("MODEL_PATH", "ml/models/demo_model.pt"))
+API_KEY = os.getenv("LUMINA_API_KEY", "local-dev-api-key")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -55,6 +60,12 @@ class PredictionResponse(BaseModel):
 def log_event(event_name: str, **fields) -> None:
     log_record = {"event": event_name, **fields}
     logger.info(json.dumps(log_record))
+
+
+def verify_api_key(x_api_key: str | None) -> None:
+    if not x_api_key or x_api_key != API_KEY:
+        log_event("authentication_failed", status="error")
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 def load_model() -> nn.Module:
@@ -102,11 +113,16 @@ def metrics() -> Response:
 
 
 @app.post("/predict", response_model=PredictionResponse)
-def predict(request: PredictionRequest) -> PredictionResponse:
+def predict(
+    request: PredictionRequest,
+    x_api_key: str | None = Header(default=None),
+) -> PredictionResponse:
     request_id = str(uuid4())
     start_time = time()
 
     try:
+        verify_api_key(x_api_key)
+
         x = torch.tensor([request.features], dtype=torch.float32)
 
         with torch.no_grad():
@@ -133,6 +149,10 @@ def predict(request: PredictionRequest) -> PredictionResponse:
             request_id=request_id,
             latency_ms=latency_ms,
         )
+
+    except HTTPException:
+        PREDICTION_ERRORS.inc()
+        raise
 
     except Exception as exc:
         latency_ms = round((time() - start_time) * 1000, 2)
