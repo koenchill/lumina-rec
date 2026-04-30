@@ -73,3 +73,15 @@ def test_metrics_endpoint():
     assert "lumina_prediction_requests_total" in response.text
     assert "lumina_prediction_errors_total" in response.text
     assert "lumina_prediction_latency_ms" in response.text
+    assert "lumina_rate_limit_errors_total" in response.text
+
+
+def test_predict_rate_limit_eventually_blocks_requests():
+    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+
+    status_codes = [
+        client.post("/predict", json=payload, headers=API_HEADERS).status_code
+        for _ in range(35)
+    ]
+
+    assert 429 in status_codes
