@@ -12,6 +12,7 @@ class InferenceUser(HttpUser):
             "/predict",
             json=payload,
             catch_response=True,
+            headers={"x-api-key": "local-dev-api-key"},
         ) as response:
             if response.status_code != 200:
                 response.failure(f"Unexpected status code: {response.status_code}")
