@@ -27,7 +27,7 @@ def test_ready_endpoint():
 
 
 def test_predict_endpoint():
-    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+    {"user_id": 1, "movie_id": 1}
 
     response = client.post("/predict", json=payload, headers=API_HEADERS)
     body = response.json()
