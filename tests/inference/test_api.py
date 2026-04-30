@@ -4,6 +4,8 @@ from services.inference.main import app
 
 client = TestClient(app)
 
+API_HEADERS = {"x-api-key": "local-dev-api-key"}
+
 
 def test_health_endpoint():
     response = client.get("/health")
@@ -25,7 +27,7 @@ def test_ready_endpoint():
 def test_predict_endpoint():
     payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
 
-    response = client.post("/predict", json=payload)
+    response = client.post("/predict", json=payload, headers=API_HEADERS)
     body = response.json()
 
     assert response.status_code == 200
@@ -36,10 +38,30 @@ def test_predict_endpoint():
     assert "latency_ms" in body
 
 
+def test_predict_rejects_missing_api_key():
+    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+
+    response = client.post("/predict", json=payload)
+
+    assert response.status_code == 401
+
+
+def test_predict_rejects_bad_api_key():
+    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+
+    response = client.post(
+        "/predict",
+        json=payload,
+        headers={"x-api-key": "wrong-key"},
+    )
+
+    assert response.status_code == 401
+
+
 def test_predict_rejects_bad_feature_length():
     payload = {"features": [1, 2, 3]}
 
-    response = client.post("/predict", json=payload)
+    response = client.post("/predict", json=payload, headers=API_HEADERS)
 
     assert response.status_code == 422
 
