@@ -114,10 +114,10 @@ def prepare_data():
     )
 
     mapping_payload = {
-        "user_to_idx": {str(k): v for k, v in user_to_idx.items()},
-        "movie_to_idx": {str(k): v for k, v in movie_to_idx.items()},
-        "idx_to_movie": {str(k): v for k, v in idx_to_movie.items()},
-    }
+    "user_to_idx": {str(k): v for k, v in user_to_idx.items()},
+    "movie_to_idx": {str(k): v for k, v in movie_to_idx.items()},
+    "idx_to_movie": {str(k): v for k, v in idx_to_movie.items()},
+}
 
     mapping_path = MODEL_DIR / "movielens_mappings.json"
     mapping_path.write_text(json.dumps(mapping_payload, indent=2), encoding="utf-8")
