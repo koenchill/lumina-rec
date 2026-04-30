@@ -6,9 +6,7 @@ class InferenceUser(HttpUser):
 
     @task
     def predict(self):
-        payload = {
-            "features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-        }
+        payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
 
         with self.client.post(
             "/predict",
@@ -29,9 +27,7 @@ class InferenceUser(HttpUser):
                 "latency_ms",
             ]
 
-            missing_fields = [
-                field for field in required_fields if field not in body
-            ]
+            missing_fields = [field for field in required_fields if field not in body]
 
             if missing_fields:
                 response.failure(f"Missing fields: {missing_fields}")
