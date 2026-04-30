@@ -1,6 +1,20 @@
 param(
     [Parameter(Mandatory = $true)]
-    [ValidateSet("up", "down", "ps", "logs", "train", "test", "build-inference", "health", "ready", "metrics", "predict", "load-test")]
+    [ValidateSet(
+        "up",
+        "down",
+        "ps",
+        "logs",
+        "train",
+        "test",
+        "build-inference",
+        "health",
+        "ready",
+        "metrics",
+        "predict",
+        "load-test"
+    )]
+    [string]$Task
 )
 
 switch ($Task) {
@@ -50,5 +64,18 @@ switch ($Task) {
             -Method Post `
             -ContentType "application/json" `
             -Body '{"features":[1,2,3,4,5,6,7,8,9,10]}'
+    }
+
+    "load-test" {
+        New-Item -ItemType Directory -Path .\tests\load -Force | Out-Null
+
+        locust `
+            -f .\tests\load\locustfile.py `
+            --host http://localhost:8001 `
+            --headless `
+            -u 10 `
+            -r 2 `
+            -t 60s `
+            --html .\tests\load\load_test_report.html
     }
 }
