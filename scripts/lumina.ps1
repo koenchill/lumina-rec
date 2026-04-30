@@ -58,10 +58,11 @@ switch ($Task) {
         Invoke-WebRequest -Uri http://localhost:8001/metrics -UseBasicParsing
     }
 
-    "predict" {
+        "predict" {
         Invoke-RestMethod `
             -Uri http://localhost:8001/predict `
             -Method Post `
+            -Headers @{ "x-api-key" = "local-dev-api-key" } `
             -ContentType "application/json" `
             -Body '{"features":[1,2,3,4,5,6,7,8,9,10]}'
     }
