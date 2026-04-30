@@ -6,7 +6,7 @@ COPY pyproject.toml uv.lock ./
 COPY ml/models/demo_model.pt ml/models/demo_model.pt
 COPY services/inference services/inference
 
-RUN pip install --no-cache-dir fastapi uvicorn torch pydantic numpy prometheus-client
+RUN pip install --no-cache-dir fastapi uvicorn torch pydantic numpy prometheus-client python-dotenv slowapi
 
 EXPOSE 8000
 
