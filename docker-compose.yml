@@ -8,10 +8,17 @@
     depends_on:
       - mlflow
     environment:
-      MODEL_PATH: /app/ml/models/demo_model.pt
-      LUMINA_API_KEY: local-dev-api-key
-      LUMINA_RATE_LIMIT: 300/minute
-      MODEL_SHA256: ${MODEL_SHA256:-}
+      environment:
+  MODEL_PATH: /app/ml/models/demo_model.pt
+  MLFLOW_TRACKING_URI: http://mlflow:5000
+  MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+  AWS_ACCESS_KEY_ID: minio
+  AWS_SECRET_ACCESS_KEY: minio123
+  LUMINA_API_KEY: local-dev-api-key
+  LUMINA_RATE_LIMIT: 300/minute
+  MODEL_RUN_ID: ${MODEL_RUN_ID:-}
+  MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-approved_model}
+  MODEL_SHA256: ${MODEL_SHA256:-}
 
   localstack:
     image: localstack/localstack:3.0
