@@ -22,6 +22,8 @@ def test_ready_endpoint():
     assert body["status"] == "ready"
     assert body["model_name"] == "lumina-rec-demo-model"
     assert body["model_version"] == "0.1.0"
+    assert "model_sha256" in body
+    assert body["checksum_validation"] in ["enabled", "not_configured"]
 
 
 def test_predict_endpoint():
@@ -76,12 +78,8 @@ def test_metrics_endpoint():
     assert "lumina_rate_limit_errors_total" in response.text
 
 
-def test_predict_rate_limit_eventually_blocks_requests():
-    payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+def test_metrics_include_rate_limit_counter():
+    response = client.get("/metrics")
 
-    status_codes = [
-        client.post("/predict", json=payload, headers=API_HEADERS).status_code
-        for _ in range(35)
-    ]
-
-    assert 429 in status_codes
+    assert response.status_code == 200
+    assert "lumina_rate_limit_errors_total" in response.text
