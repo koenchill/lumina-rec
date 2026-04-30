@@ -14,23 +14,24 @@ The current system is a local MLOps inference stack that trains and serves a Mov
 | Model version | 0.2.0 |
 | Dataset | MovieLens latest small |
 | Model type | Matrix factorization |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
 | Artifact path | approved_model |
-| Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
-| Test RMSE | 2.0423 |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
 
 ## Implemented Controls
 
 | Control Area | Implemented Control | Risk Reduced |
 |---|---|---|
-| API authentication | `/predict` requires `x-api-key` | Reduces unauthorized inference access |
-| Input validation | Pydantic requires `user_id` and `movie_id` | Reduces malformed request risk |
+| API authentication | `/predict` and `/recommend` require `x-api-key` | Reduces unauthorized inference access |
+| Input validation | Pydantic requires valid request fields | Reduces malformed request risk |
+| Recommendation limits | `top_n` must be between 1 and 50 | Reduces excessive response size and misuse |
 | Unknown entity handling | Unknown users and movies return 404 | Prevents unsupported predictions from unknown mappings |
 | Health checks | `/health` endpoint | Confirms API process is alive |
 | Readiness checks | `/ready` confirms approved model load status | Reduces failed traffic routing to unready service |
 | Approved model loading | Inference loads artifacts from MLflow by `MODEL_RUN_ID` | Reduces risk of serving an unapproved local model |
 | Model checksum validation | SHA256 validates the downloaded model artifact | Reduces model tampering and artifact corruption risk |
-| Structured logging | Prediction events include request ID, model name, model version, MLflow run ID, latency, and status | Improves debugging and incident response |
+| Structured logging | Prediction and recommendation events include request ID, model name, model version, MLflow run ID, latency, and status | Improves debugging and incident response |
 | Metrics | `/metrics` exposes request count, error count, latency, and rate limit errors | Supports monitoring and service reliability |
 | Automated tests | Pytest validates API behavior | Reduces regression risk |
 | Load testing | Locust validates inference under repeated requests | Reduces performance uncertainty |
@@ -50,7 +51,7 @@ The current implementation improves security in six areas.
 
 ### 1. Access Control
 
-The prediction endpoint is no longer open. A caller must provide the expected API key.
+The prediction and recommendation endpoints require an API key.
 
 ### 2. Model Governance
 
@@ -80,12 +81,14 @@ Gitleaks and Trivy add checks for secrets and container vulnerabilities.
 | Metrics endpoint is open locally | Could expose operational details | Restrict metrics to internal network |
 | No production rate limit enforcement layer | App level rate limiting may not be enough | Add gateway or ingress rate limiting |
 | No TLS locally | Traffic is not encrypted | Terminate TLS at gateway or ingress in production |
-| No role based authorization | All valid API callers have same access | Add RBAC through identity provider |
+| No role based authorization | All valid callers have same access | Add RBAC through identity provider |
 | No formal secret manager | Local `.env` is acceptable only for development | Use AWS Secrets Manager, Azure Key Vault, or GCP Secret Manager |
 | Trivy is report only | Vulnerabilities do not fail CI yet | Change Trivy exit code to fail on critical findings |
 | Dependency pinning still needs final validation | Dependency drift could break builds | Pin inference requirements and validate Docker build |
 | No production network segmentation | Services share local network | Use VPC, private subnets, security groups, and least privilege IAM |
 | Model performance is baseline only | RMSE is not optimized yet | Improve training, tuning, and evaluation workflow |
+| No model registry alias | Approved model is selected by run ID only | Add MLflow Model Registry alias or stage |
+| No dataset checksum | Training dataset integrity is not independently verified | Add dataset checksum validation |
 
 ## CI Security Gates
 
@@ -108,25 +111,27 @@ Local validation confirmed:
 | Test | Result |
 |---|---|
 | MovieLens training | completed |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
-| Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
-| Test RMSE | 2.0423 |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
 | Readiness check | passed |
 | Prediction check | passed |
+| Recommendation check | passed |
 | Prediction response | returned `predicted_rating`, `user_id`, `movie_id`, model metadata, request ID, and latency |
-| Previous load test requests | 446 |
-| Previous load test failures | 0 |
-| Previous failure rate | 0.00% |
+| Recommendation response | returned `user_id`, `recommendations`, model metadata, request ID, and latency |
+| Latest load test requests | 446 |
+| Latest load test failures | 0 |
+| Latest failure rate | 0.00% |
 
 ## Next Security Improvements
 
-1. Add a top N recommendation endpoint with controlled output size.
-2. Add movie title metadata to prediction responses.
-3. Refresh Locust baseline after the MovieLens transition.
-4. Replace local API key with JWT or gateway based authentication.
-5. Restrict `/metrics` to internal monitoring.
-6. Enforce Trivy failure on critical vulnerabilities.
-7. Finalize dependency pinning and vulnerability review.
-8. Add production deployment network design.
-9. Add incident response evidence collection.
-10. Add model promotion and rollback approval workflow.
+1. Add movie title and genre metadata to recommendation responses.
+2. Add `/movies/{movie_id}` lookup endpoint.
+3. Add MLflow Model Registry alias for approved model selection.
+4. Add signed artifact verification.
+5. Add dataset checksum validation.
+6. Replace local API key with JWT or gateway based authentication.
+7. Restrict `/metrics` to internal monitoring.
+8. Enforce Trivy failure on critical vulnerabilities.
+9. Finalize dependency pinning and vulnerability review.
+10. Add production deployment network design.
