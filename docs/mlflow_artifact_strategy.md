@@ -18,22 +18,25 @@ The inference API loads the approved model using:
 | MLFLOW_TRACKING_URI | MLflow tracking server URL |
 | MLFLOW_S3_ENDPOINT_URL | MinIO S3 compatible endpoint |
 
-## Approved Model
+## Current Approved Model
 
 | Field | Value |
 |---|---|
 | Model name | lumina-rec-movielens-mf |
 | Model version | 0.2.0 |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
+| Dataset | MovieLens latest small |
+| Model type | Matrix factorization |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
 | Artifact path | approved_model |
-| Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
 
 ## Approved Artifacts
 
 | Artifact | Purpose |
 |---|---|
 | recommender_model.pt | PyTorch model payload |
-| model_metadata.json | Model metadata, metrics, checksum, run ID |
+| model_metadata.json | Model metadata, metrics, checksum, and run ID |
 | movielens_mappings.json | User and movie index mappings |
 | movies_metadata.csv | Movie title and genre metadata |
 
@@ -55,7 +58,35 @@ The inference API loads the approved model using:
 4. Verify the model checksum.
 5. Load mappings.
 6. Load the PyTorch model.
-7. Serve predictions.
+7. Serve `/predict` and `/recommend`.
+
+## Promotion Flow
+
+1. Train a candidate model.
+2. Compare candidate RMSE against the approved baseline.
+3. Confirm artifacts uploaded to MLflow.
+4. Confirm SHA256 was recorded.
+5. Update `.env` with the approved `MODEL_RUN_ID` and `MODEL_SHA256`.
+6. Restart inference.
+7. Validate `/ready`, `/predict`, `/recommend`, and tests.
+8. Record the decision in `docs/model_promotion_record.md`.
+
+## Current Promotion Decision
+
+The current approved model replaced the previous run because its RMSE improved from `2.0423` to `2.0162`.
+
+| Metric | Previous | Current | Result |
+|---|---:|---:|---|
+| Test RMSE | 2.0423 | 2.0162 | Improved |
+
+## Runtime Validation
+
+```powershell
+.\scripts\lumina.ps1 ready
+.\scripts\lumina.ps1 predict
+.\scripts\lumina.ps1 recommend
+.\scripts\lumina.ps1 test
+```
 
 ## Acceptance Rules
 
@@ -68,3 +99,13 @@ A model is considered approved when:
 - Inference starts successfully.
 - `/ready` confirms the run ID and checksum.
 - `/predict` returns a valid response.
+- `/recommend` returns a valid recommendation list.
+- API tests pass.
+
+## Future Improvements
+
+- Add MLflow Model Registry alias for approved model.
+- Add signed artifact verification.
+- Add dataset checksum validation.
+- Add model performance gate before promotion.
+- Add automated promotion report generation.
