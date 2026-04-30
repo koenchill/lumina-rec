@@ -28,11 +28,8 @@ Lumina Rec is a local MLOps recommendation system that now supports:
 .\scripts\lumina.ps1 recommend
 .\scripts\lumina.ps1 test
 .\scripts\lumina.ps1 load-test
+```
 
-
-Add this section:
-
-```markdown
 ## API Examples
 
 ### Predict a Movie Rating
@@ -42,16 +39,21 @@ Add this section:
   "user_id": 1,
   "movie_id": 1
 }
+```
 
+### Get Top N Recommendations
+
+```json
 {
   "user_id": 1,
   "top_n": 10
 }
+```
 
+## Project Documentation
 
-Add this under project documentation:
-
-```markdown
+| Document | Purpose |
+|---|---|
 | [Recommendation API](docs/recommendation_api.md) | Documents `/predict` and `/recommend` |
 | [Model Card](docs/model_card.md) | Documents the approved MovieLens model |
 | [MLflow Artifact Strategy](docs/mlflow_artifact_strategy.md) | Explains how approved artifacts are loaded |
