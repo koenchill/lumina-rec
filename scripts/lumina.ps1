@@ -12,6 +12,7 @@ param(
         "ready",
         "metrics",
         "predict",
+        "recommend",
         "load-test",
         "wait"
     )]
@@ -101,6 +102,17 @@ switch ($Task) {
             -Headers @{ "x-api-key" = "local-dev-api-key" } `
             -ContentType "application/json" `
             -Body '{"user_id":1,"movie_id":1}'
+    }
+
+    "recommend" {
+        Wait-ForInferenceApi
+
+        Invoke-RestMethod `
+            -Uri http://localhost:8001/recommend `
+            -Method Post `
+            -Headers @{ "x-api-key" = "local-dev-api-key" } `
+            -ContentType "application/json" `
+            -Body '{"user_id":1,"top_n":10}'
     }
 
     "load-test" {
