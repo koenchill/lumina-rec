@@ -101,7 +101,7 @@ def prepare_data():
 
     user_to_idx = {user_id: idx for idx, user_id in enumerate(user_ids)}
     movie_to_idx = {movie_id: idx for idx, movie_id in enumerate(movie_ids)}
-    idx_to_movie = {idx: movie_id for movie_id, idx in movie_to_idx.items()}
+    idx_to_movie = {int(idx): int(movie_id) for movie_id, idx in movie_to_idx.items()}
 
     ratings["user_idx"] = ratings["userId"].map(user_to_idx)
     ratings["movie_idx"] = ratings["movieId"].map(movie_to_idx)
