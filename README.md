@@ -11,3 +11,4 @@
 | [Model Rollback Procedure](docs/model_rollback_procedure.md) | Defines how to restore a known good model |
 | [Deployment Notes](docs/deployment_notes.md) | Captures Docker and local deployment decisions |
 | [Project Status](docs/project_status.md) | Summarizes current state and next steps |
+| [Architecture](docs/architecture.md) | Includes the Mermaid architecture diagram and service flow |
