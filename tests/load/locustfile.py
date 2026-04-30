@@ -11,7 +11,7 @@ class InferenceUser(HttpUser):
 
     @task
     def predict(self):
-        payload = {"features": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]}
+        payload = {"user_id": 1, "movie_id": 1}
 
         with self.client.post(
             "/predict",
