@@ -6,6 +6,7 @@ from pathlib import Path
 from time import time
 from uuid import uuid4
 
+import mlflow
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
@@ -21,12 +22,18 @@ from starlette.responses import JSONResponse
 
 load_dotenv()
 
-MODEL_NAME = "lumina-rec-demo-model"
-MODEL_VERSION = "0.1.0"
-MODEL_PATH = Path(os.getenv("MODEL_PATH", "ml/models/demo_model.pt"))
+MODEL_RUN_ID = os.getenv("MODEL_RUN_ID")
+MODEL_ARTIFACT_PATH = os.getenv("MODEL_ARTIFACT_PATH", "approved_model")
 MODEL_SHA256 = os.getenv("MODEL_SHA256")
+
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+APPROVED_MODEL_DIR = Path(os.getenv("APPROVED_MODEL_DIR", "ml/models/approved"))
+
 API_KEY = os.getenv("LUMINA_API_KEY", "local-dev-api-key")
 RATE_LIMIT = os.getenv("LUMINA_RATE_LIMIT", "30/minute")
+
+DEFAULT_MODEL_NAME = "lumina-rec-movielens-mf"
+DEFAULT_MODEL_VERSION = "0.2.0"
 
 logging.basicConfig(
     level=logging.INFO,
@@ -37,7 +44,7 @@ logger = logging.getLogger("lumina-rec-inference")
 
 limiter = Limiter(key_func=get_remote_address)
 
-app = FastAPI(title="Lumina Rec Inference API", version=MODEL_VERSION)
+app = FastAPI(title="Lumina Rec Inference API", version=DEFAULT_MODEL_VERSION)
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -62,12 +69,37 @@ RATE_LIMIT_ERRORS = Counter(
 )
 
 
+class MatrixFactorizationModel(nn.Module):
+    def __init__(self, num_users: int, num_movies: int, embedding_dim: int):
+        super().__init__()
+
+        self.user_embedding = nn.Embedding(num_users, embedding_dim)
+        self.movie_embedding = nn.Embedding(num_movies, embedding_dim)
+        self.user_bias = nn.Embedding(num_users, 1)
+        self.movie_bias = nn.Embedding(num_movies, 1)
+        self.global_bias = nn.Parameter(torch.zeros(1))
+
+    def forward(self, user_idx: torch.Tensor, movie_idx: torch.Tensor) -> torch.Tensor:
+        user_vector = self.user_embedding(user_idx)
+        movie_vector = self.movie_embedding(movie_idx)
+
+        dot_product = (user_vector * movie_vector).sum(dim=1)
+        user_bias = self.user_bias(user_idx).squeeze()
+        movie_bias = self.movie_bias(movie_idx).squeeze()
+
+        rating = dot_product + user_bias + movie_bias + self.global_bias
+        return torch.clamp(rating, min=0.5, max=5.0)
+
+
 class PredictionRequest(BaseModel):
-    features: list[float] = Field(..., min_length=10, max_length=10)
+    user_id: int = Field(..., description="MovieLens userId")
+    movie_id: int = Field(..., description="MovieLens movieId")
 
 
 class PredictionResponse(BaseModel):
-    prediction: float
+    predicted_rating: float
+    user_id: int
+    movie_id: int
     model_name: str
     model_version: str
     request_id: str
@@ -111,42 +143,88 @@ def verify_api_key(x_api_key: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
-def load_model() -> tuple[nn.Module, str]:
-    if not MODEL_PATH.exists():
-        raise FileNotFoundError(f"Model file not found: {MODEL_PATH}")
+def download_approved_artifacts() -> Path:
+    if not MODEL_RUN_ID:
+        raise ValueError("MODEL_RUN_ID is required to load approved MLflow artifacts")
 
-    actual_sha256 = calculate_sha256(MODEL_PATH)
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+    APPROVED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
+
+    artifact_local_path = mlflow.artifacts.download_artifacts(
+        run_id=MODEL_RUN_ID,
+        artifact_path=MODEL_ARTIFACT_PATH,
+        dst_path=str(APPROVED_MODEL_DIR),
+    )
+
+    return Path(artifact_local_path)
+
+
+def load_json(file_path: Path) -> dict:
+    return json.loads(file_path.read_text(encoding="utf-8"))
+
+
+def load_model() -> tuple[nn.Module, dict, dict, str]:
+    artifact_dir = download_approved_artifacts()
+
+    model_path = artifact_dir / "recommender_model.pt"
+    metadata_path = artifact_dir / "model_metadata.json"
+    mappings_path = artifact_dir / "movielens_mappings.json"
+
+    if not model_path.exists():
+        raise FileNotFoundError(f"Approved model file not found: {model_path}")
+
+    if not metadata_path.exists():
+        raise FileNotFoundError(f"Model metadata file not found: {metadata_path}")
+
+    if not mappings_path.exists():
+        raise FileNotFoundError(f"MovieLens mappings file not found: {mappings_path}")
+
+    actual_sha256 = calculate_sha256(model_path)
 
     if MODEL_SHA256 and actual_sha256 != MODEL_SHA256:
         log_event(
             "model_checksum_failed",
-            model_name=MODEL_NAME,
-            model_version=MODEL_VERSION,
-            model_path=str(MODEL_PATH),
+            model_path=str(model_path),
             expected_sha256=MODEL_SHA256,
             actual_sha256=actual_sha256,
             status="error",
         )
         raise ValueError("Model checksum validation failed")
 
-    model = nn.Linear(10, 1)
-    state_dict = torch.load(MODEL_PATH, map_location="cpu")
-    model.load_state_dict(state_dict)
+    metadata = load_json(metadata_path)
+    mappings = load_json(mappings_path)
+
+    model_payload = torch.load(
+        model_path,
+        map_location="cpu",
+        weights_only=False,
+    )
+
+    model = MatrixFactorizationModel(
+        num_users=int(model_payload["num_users"]),
+        num_movies=int(model_payload["num_movies"]),
+        embedding_dim=int(model_payload["embedding_dim"]),
+    )
+
+    model.load_state_dict(model_payload["state_dict"])
     model.eval()
 
     log_event(
         "model_loaded",
-        model_name=MODEL_NAME,
-        model_version=MODEL_VERSION,
-        model_path=str(MODEL_PATH),
+        model_name=metadata.get("model_name", DEFAULT_MODEL_NAME),
+        model_version=metadata.get("model_version", DEFAULT_MODEL_VERSION),
+        model_path=str(model_path),
+        model_run_id=MODEL_RUN_ID,
+        artifact_path=MODEL_ARTIFACT_PATH,
         model_sha256=actual_sha256,
         checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
     )
 
-    return model, actual_sha256
+    return model, metadata, mappings, actual_sha256
 
 
-model, model_actual_sha256 = load_model()
+model, model_metadata, model_mappings, model_actual_sha256 = load_model()
 
 
 @app.get("/health")
@@ -161,8 +239,10 @@ def ready() -> dict[str, str]:
 
     return {
         "status": "ready",
-        "model_name": MODEL_NAME,
-        "model_version": MODEL_VERSION,
+        "model_name": model_metadata.get("model_name", DEFAULT_MODEL_NAME),
+        "model_version": model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+        "model_run_id": str(MODEL_RUN_ID),
+        "model_artifact_path": MODEL_ARTIFACT_PATH,
         "model_sha256": model_actual_sha256,
         "checksum_validation": "enabled" if MODEL_SHA256 else "not_configured",
     }
@@ -186,10 +266,29 @@ def predict(
     try:
         verify_api_key(x_api_key)
 
-        x = torch.tensor([prediction_request.features], dtype=torch.float32)
+        user_key = str(prediction_request.user_id)
+        movie_key = str(prediction_request.movie_id)
+
+        user_to_idx = model_mappings["user_to_idx"]
+        movie_to_idx = model_mappings["movie_to_idx"]
+
+        if user_key not in user_to_idx:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown user_id: {prediction_request.user_id}",
+            )
+
+        if movie_key not in movie_to_idx:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown movie_id: {prediction_request.movie_id}",
+            )
+
+        user_idx = torch.tensor([int(user_to_idx[user_key])], dtype=torch.long)
+        movie_idx = torch.tensor([int(movie_to_idx[movie_key])], dtype=torch.long)
 
         with torch.no_grad():
-            prediction = model(x).item()
+            predicted_rating = float(model(user_idx, movie_idx).item())
 
         latency_ms = round((time() - start_time) * 1000, 2)
 
@@ -199,16 +298,21 @@ def predict(
         log_event(
             "prediction_completed",
             request_id=request_id,
-            model_name=MODEL_NAME,
-            model_version=MODEL_VERSION,
+            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
+            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+            model_run_id=MODEL_RUN_ID,
+            user_id=prediction_request.user_id,
+            movie_id=prediction_request.movie_id,
             latency_ms=latency_ms,
             status="success",
         )
 
         return PredictionResponse(
-            prediction=prediction,
-            model_name=MODEL_NAME,
-            model_version=MODEL_VERSION,
+            predicted_rating=predicted_rating,
+            user_id=prediction_request.user_id,
+            movie_id=prediction_request.movie_id,
+            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
+            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
             request_id=request_id,
             latency_ms=latency_ms,
         )
@@ -224,8 +328,9 @@ def predict(
         log_event(
             "prediction_failed",
             request_id=request_id,
-            model_name=MODEL_NAME,
-            model_version=MODEL_VERSION,
+            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
+            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+            model_run_id=MODEL_RUN_ID,
             latency_ms=latency_ms,
             status="error",
             error=str(exc),
