@@ -11,6 +11,7 @@
       MODEL_PATH: /app/ml/models/demo_model.pt
       LUMINA_API_KEY: local-dev-api-key
       LUMINA_RATE_LIMIT: 300/minute
+      MODEL_SHA256: ${MODEL_SHA256:-}
 
   localstack:
     image: localstack/localstack:3.0
