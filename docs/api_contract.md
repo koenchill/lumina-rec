@@ -10,7 +10,7 @@ http://localhost:8001
 
 ## Authentication
 
-The `/predict` endpoint requires an API key.
+The `/predict` and `/recommend` endpoints require an API key.
 
 Required header:
 
@@ -20,6 +20,17 @@ x-api-key: local-dev-api-key
 
 Health, readiness, and metrics endpoints do not require an API key in the local development setup.
 
+## Current Approved Model
+
+| Field | Value |
+|---|---|
+| Model name | lumina-rec-movielens-mf |
+| Model version | 0.2.0 |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| Artifact path | approved_model |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
+
 ## Endpoints
 
 | Method | Endpoint | Authentication | Purpose |
@@ -28,6 +39,7 @@ Health, readiness, and metrics endpoints do not require an API key in the local 
 | GET | /ready | No | Confirms the approved model artifact is loaded |
 | GET | /metrics | No | Exposes Prometheus style metrics |
 | POST | /predict | Yes | Returns a MovieLens rating prediction |
+| POST | /recommend | Yes | Returns top N recommendations for a user |
 
 ## GET /health
 
@@ -60,9 +72,9 @@ GET /ready
   "status": "ready",
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
-  "model_run_id": "248c55bf41994c05923a86e354158303",
+  "model_run_id": "14eda4cf03bd4d328a3ee791ec9a002f",
   "model_artifact_path": "approved_model",
-  "model_sha256": "c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6",
+  "model_sha256": "205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd",
   "checksum_validation": "enabled"
 }
 ```
@@ -103,7 +115,55 @@ x-api-key: local-dev-api-key
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
   "request_id": "example-request-id",
-  "latency_ms": 9.25
+  "latency_ms": 0.67
+}
+```
+
+## POST /recommend
+
+### Request
+
+```http
+POST /recommend
+Content-Type: application/json
+x-api-key: local-dev-api-key
+```
+
+### Request Body
+
+```json
+{
+  "user_id": 1,
+  "top_n": 10
+}
+```
+
+### Request Rules
+
+| Field | Type | Rule |
+|---|---|---|
+| user_id | integer | Must exist in the approved MovieLens user mapping |
+| top_n | integer | Optional. Defaults to 10. Must be between 1 and 50 |
+
+### Success Response
+
+```json
+{
+  "user_id": 1,
+  "recommendations": [
+    {
+      "movie_id": 2,
+      "predicted_rating": 5.0
+    },
+    {
+      "movie_id": 3,
+      "predicted_rating": 5.0
+    }
+  ],
+  "model_name": "lumina-rec-movielens-mf",
+  "model_version": "0.2.0",
+  "request_id": "example-request-id",
+  "latency_ms": 3.83
 }
 ```
 
@@ -125,7 +185,7 @@ Example response:
 
 ## Validation Error
 
-If `user_id` or `movie_id` is missing, the API returns:
+If a required field is missing or `top_n` is outside the allowed range, the API returns:
 
 ```text
 422 Unprocessable Entity
@@ -178,9 +238,9 @@ The approved artifact path is `approved_model`.
 
 The model artifact is verified with SHA256 before serving predictions.
 
-The API logs structured prediction events.
+The API logs structured prediction and recommendation events.
 
-Each prediction response includes a unique `request_id`.
+Each prediction and recommendation response includes a unique `request_id`.
 
 The local API key is for development only. Production should use a managed secret store and stronger authentication.
 
