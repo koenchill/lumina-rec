@@ -92,7 +92,7 @@ switch ($Task) {
         Invoke-WebRequest -Uri http://localhost:8001/metrics -UseBasicParsing
     }
 
-        "predict" {
+    "predict" {
         Wait-ForInferenceApi
 
         Invoke-RestMethod `
