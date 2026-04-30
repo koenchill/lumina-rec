@@ -13,6 +13,7 @@ dependencies = [
     "boto3",
     "pytest",
     "httpx",
+    "scikit-learn"
     "prometheus-client"
 ]
 
