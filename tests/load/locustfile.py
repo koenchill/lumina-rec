@@ -26,7 +26,9 @@ class InferenceUser(HttpUser):
             body = response.json()
 
             required_fields = [
-                "prediction",
+                "predicted_rating",
+                "user_id",
+                "movie_id",
                 "model_name",
                 "model_version",
                 "request_id",
