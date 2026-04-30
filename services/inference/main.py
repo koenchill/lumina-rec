@@ -24,6 +24,7 @@ load_dotenv()
 MODEL_NAME = "lumina-rec-demo-model"
 MODEL_VERSION = "0.1.0"
 MODEL_PATH = Path(os.getenv("MODEL_PATH", "ml/models/demo_model.pt"))
+MODEL_SHA256 = os.getenv("MODEL_SHA256")
 API_KEY = os.getenv("LUMINA_API_KEY", "local-dev-api-key")
 RATE_LIMIT = os.getenv("LUMINA_RATE_LIMIT", "30/minute")
 
