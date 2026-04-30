@@ -1,15 +1,23 @@
 import os
-from dotenv import load_dotenv
+from pathlib import Path
+
 import mlflow
-import mlflow.pytorch
 import torch
 import torch.nn as nn
-from pathlib import Path
+from dotenv import load_dotenv
 
 print("✅ Starting MLflow training...")
 
-mlflow.set_tracking_uri("http://localhost:5000")
-mlflow.set_experiment("lumina-rec-recommender")
+load_dotenv()
+
+mlflow_tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
+mlflow_experiment_name = os.getenv(
+    "MLFLOW_EXPERIMENT_NAME",
+    "lumina-rec-recommender",
+)
+
+mlflow.set_tracking_uri(mlflow_tracking_uri)
+mlflow.set_experiment(mlflow_experiment_name)
 
 with mlflow.start_run(run_name="simple-model"):
     mlflow.log_param("model_type", "demo")
@@ -27,7 +35,6 @@ with mlflow.start_run(run_name="simple-model"):
     torch.save(model.state_dict(), model_path)
 
     mlflow.log_artifact(str(model_path), artifact_path="model_state_dict")
-    #mlflow.pytorch.log_model(model, artifact_path="pytorch_model")
 
     print("✅ Training completed and logged to MLflow!")
-    print("Run URL: http://localhost:5000")
+    print(f"Run URL: {mlflow_tracking_uri}")
