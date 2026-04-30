@@ -24,7 +24,7 @@ The validated stack includes:
 - Docker Compose orchestration
 - Health and readiness checks
 - Prometheus style metrics
-- API key authentication for predictions
+- API key authentication for predictions and recommendations
 - Configurable rate limiting
 - Model checksum validation
 - Automated API tests
@@ -34,7 +34,7 @@ The validated stack includes:
 
 | Service | Purpose | Local URL |
 |---|---|---|
-| Inference API | Serves MovieLens rating predictions | http://localhost:8001 |
+| Inference API | Serves MovieLens predictions and recommendations | http://localhost:8001 |
 | MLflow | Tracks experiments and approved artifacts | http://localhost:5000 |
 | MinIO | Stores MLflow artifacts | http://localhost:9001 |
 | Postgres | Stores MLflow metadata | localhost:5433 |
@@ -50,10 +50,10 @@ The validated stack includes:
 | Model version | 0.2.0 |
 | Dataset | MovieLens latest small |
 | Model type | Matrix factorization |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
 | Artifact path | approved_model |
-| Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
-| Test RMSE | 2.0423 |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
 
 ## Commands Used
 
@@ -73,9 +73,9 @@ Result:
 
 ```text
 Training completed and logged to MLflow.
-Run ID: 248c55bf41994c05923a86e354158303
-Model SHA256: c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6
-Test RMSE: 2.0423
+Run ID: 14eda4cf03bd4d328a3ee791ec9a002f
+Model SHA256: 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
+Test RMSE: 2.0162
 MLflow URL: http://localhost:5000
 ```
 
@@ -118,9 +118,9 @@ Expected response:
   "status": "ready",
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
-  "model_run_id": "248c55bf41994c05923a86e354158303",
+  "model_run_id": "14eda4cf03bd4d328a3ee791ec9a002f",
   "model_artifact_path": "approved_model",
-  "model_sha256": "c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6",
+  "model_sha256": "205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd",
   "checksum_validation": "enabled"
 }
 ```
@@ -131,16 +131,33 @@ Expected response:
 .\scripts\lumina.ps1 predict
 ```
 
-Validated response:
+Expected response fields:
 
 ```text
-predicted_rating : 5.0
-user_id          : 1
-movie_id         : 1
-model_name       : lumina-rec-movielens-mf
-model_version    : 0.2.0
-request_id       : 1df7bfd2-acaf-49a3-9443-c89160f4b9ae
-latency_ms       : 9.25
+predicted_rating
+user_id
+movie_id
+model_name
+model_version
+request_id
+latency_ms
+```
+
+### Recommendation Check
+
+```powershell
+.\scripts\lumina.ps1 recommend
+```
+
+Expected response fields:
+
+```text
+user_id
+recommendations
+model_name
+model_version
+request_id
+latency_ms
 ```
 
 ### Metrics Check
@@ -164,47 +181,47 @@ lumina_rate_limit_errors_total
 .\scripts\lumina.ps1 load-test
 ```
 
-Previous validated baseline:
+MovieLens validation baseline:
 
 | Metric | Result |
 |---|---|
 | Total requests | 446 |
 | Failures | 0 |
 | Failure rate | 0.00% |
-| Requests per second | 7.54 |
+| Requests per second | 7.51 |
 | Health median latency | 4 ms |
 | Predict median latency | 48 ms |
 | Predict p95 latency | 51 ms |
-
-A new load test should be rerun after the MovieLens transition to refresh the performance baseline.
+| Predict max latency | 56 ms |
 
 ## Security Validation
 
 | Control | Validation Result |
 |---|---|
-| API key authentication | `/predict` requires `x-api-key` |
+| API key authentication | `/predict` and `/recommend` require `x-api-key` |
 | Missing API key handling | Invalid or missing key returns 401 |
 | Input validation | Missing `user_id` or `movie_id` returns 422 |
+| Recommendation validation | Invalid `top_n` returns 422 |
 | Unknown user handling | Unknown `user_id` returns 404 |
 | Unknown movie handling | Unknown `movie_id` returns 404 |
 | Rate limit metric | `lumina_rate_limit_errors_total` exposed |
 | Model checksum validation | `/ready` confirms checksum validation is enabled |
 | Model hash visibility | `/ready` returns `model_sha256` |
 | Approved artifact loading | Inference loads model artifacts from MLflow by `MODEL_RUN_ID` |
-| Structured response metadata | Prediction includes request ID and latency |
+| Structured response metadata | Prediction and recommendation responses include request ID and latency |
 
 ## Conclusion
 
 The local MLOps stack now serves a real MovieLens recommender.
 
-The system can train a matrix factorization model, log the run to MLflow, store approved artifacts in MinIO, load approved artifacts into the inference service, verify model integrity with SHA256, serve authenticated predictions, expose readiness and metrics, and return prediction metadata.
+The system can train a matrix factorization model, log the run to MLflow, store approved artifacts in MinIO, load approved artifacts into the inference service, verify model integrity with SHA256, serve authenticated predictions and recommendations, expose readiness and metrics, and return response metadata.
 
 ## Next Engineering Step
 
-Refresh validation after the MovieLens transition:
+Recommended next steps:
 
-- Rerun API tests
-- Rerun Locust load test
-- Update the load test baseline
-- Add a top N recommendation endpoint
-- Add movie title metadata to prediction responses
+- Add movie title and genre metadata to recommendation responses
+- Add `/movies/{movie_id}` lookup endpoint
+- Add MLflow Model Registry alias for approved models
+- Add dataset checksum validation
+- Add model performance promotion gate
