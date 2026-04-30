@@ -106,6 +106,25 @@ class PredictionResponse(BaseModel):
     latency_ms: float
 
 
+class RecommendationRequest(BaseModel):
+    user_id: int = Field(..., description="MovieLens userId")
+    top_n: int = Field(default=10, ge=1, le=50)
+
+
+class RecommendationItem(BaseModel):
+    movie_id: int
+    predicted_rating: float
+
+
+class RecommendationResponse(BaseModel):
+    user_id: int
+    recommendations: list[RecommendationItem]
+    model_name: str
+    model_version: str
+    request_id: str
+    latency_ms: float
+
+
 def log_event(event_name: str, **fields) -> None:
     log_record = {"event": event_name, **fields}
     logger.info(json.dumps(log_record))
@@ -164,6 +183,14 @@ def load_json(file_path: Path) -> dict:
     return json.loads(file_path.read_text(encoding="utf-8"))
 
 
+def get_model_name() -> str:
+    return model_metadata.get("model_name", DEFAULT_MODEL_NAME)
+
+
+def get_model_version() -> str:
+    return model_metadata.get("model_version", DEFAULT_MODEL_VERSION)
+
+
 def load_model() -> tuple[nn.Module, dict, dict, str]:
     artifact_dir = download_approved_artifacts()
 
@@ -201,14 +228,14 @@ def load_model() -> tuple[nn.Module, dict, dict, str]:
         weights_only=False,
     )
 
-    model = MatrixFactorizationModel(
+    loaded_model = MatrixFactorizationModel(
         num_users=int(model_payload["num_users"]),
         num_movies=int(model_payload["num_movies"]),
         embedding_dim=int(model_payload["embedding_dim"]),
     )
 
-    model.load_state_dict(model_payload["state_dict"])
-    model.eval()
+    loaded_model.load_state_dict(model_payload["state_dict"])
+    loaded_model.eval()
 
     log_event(
         "model_loaded",
@@ -221,7 +248,7 @@ def load_model() -> tuple[nn.Module, dict, dict, str]:
         checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
     )
 
-    return model, metadata, mappings, actual_sha256
+    return loaded_model, metadata, mappings, actual_sha256
 
 
 model, model_metadata, model_mappings, model_actual_sha256 = load_model()
@@ -239,8 +266,8 @@ def ready() -> dict[str, str]:
 
     return {
         "status": "ready",
-        "model_name": model_metadata.get("model_name", DEFAULT_MODEL_NAME),
-        "model_version": model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+        "model_name": get_model_name(),
+        "model_version": get_model_version(),
         "model_run_id": str(MODEL_RUN_ID),
         "model_artifact_path": MODEL_ARTIFACT_PATH,
         "model_sha256": model_actual_sha256,
@@ -298,8 +325,8 @@ def predict(
         log_event(
             "prediction_completed",
             request_id=request_id,
-            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
-            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+            model_name=get_model_name(),
+            model_version=get_model_version(),
             model_run_id=MODEL_RUN_ID,
             user_id=prediction_request.user_id,
             movie_id=prediction_request.movie_id,
@@ -308,11 +335,11 @@ def predict(
         )
 
         return PredictionResponse(
-            predicted_rating=predicted_rating,
+            predicted_rating=round(predicted_rating, 4),
             user_id=prediction_request.user_id,
             movie_id=prediction_request.movie_id,
-            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
-            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+            model_name=get_model_name(),
+            model_version=get_model_version(),
             request_id=request_id,
             latency_ms=latency_ms,
         )
@@ -328,8 +355,8 @@ def predict(
         log_event(
             "prediction_failed",
             request_id=request_id,
-            model_name=model_metadata.get("model_name", DEFAULT_MODEL_NAME),
-            model_version=model_metadata.get("model_version", DEFAULT_MODEL_VERSION),
+            model_name=get_model_name(),
+            model_version=get_model_version(),
             model_run_id=MODEL_RUN_ID,
             latency_ms=latency_ms,
             status="error",
@@ -337,3 +364,104 @@ def predict(
         )
 
         raise HTTPException(status_code=500, detail="Prediction failed")
+
+
+@app.post("/recommend", response_model=RecommendationResponse)
+@limiter.limit(RATE_LIMIT)
+def recommend(
+    request: Request,
+    recommendation_request: RecommendationRequest,
+    x_api_key: str | None = Header(default=None),
+) -> RecommendationResponse:
+    request_id = str(uuid4())
+    start_time = time()
+
+    try:
+        verify_api_key(x_api_key)
+
+        user_key = str(recommendation_request.user_id)
+
+        user_to_idx = model_mappings["user_to_idx"]
+        idx_to_movie = model_mappings["idx_to_movie"]
+
+        if user_key not in user_to_idx:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Unknown user_id: {recommendation_request.user_id}",
+            )
+
+        user_idx_value = int(user_to_idx[user_key])
+        movie_indices = [int(index) for index in idx_to_movie.keys()]
+
+        user_tensor = torch.tensor(
+            [user_idx_value] * len(movie_indices),
+            dtype=torch.long,
+        )
+        movie_tensor = torch.tensor(movie_indices, dtype=torch.long)
+
+        with torch.no_grad():
+            predictions = model(user_tensor, movie_tensor).tolist()
+
+        ranked = sorted(
+            zip(movie_indices, predictions),
+            key=lambda item: item[1],
+            reverse=True,
+        )
+
+        top_items = ranked[: recommendation_request.top_n]
+
+        recommendations = [
+            RecommendationItem(
+                movie_id=int(idx_to_movie[str(movie_idx)]),
+                predicted_rating=round(float(score), 4),
+            )
+            for movie_idx, score in top_items
+        ]
+
+        latency_ms = round((time() - start_time) * 1000, 2)
+
+        PREDICTION_REQUESTS.inc()
+        PREDICTION_LATENCY.observe(latency_ms)
+
+        log_event(
+            "recommendation_completed",
+            request_id=request_id,
+            model_name=get_model_name(),
+            model_version=get_model_version(),
+            model_run_id=MODEL_RUN_ID,
+            user_id=recommendation_request.user_id,
+            top_n=recommendation_request.top_n,
+            latency_ms=latency_ms,
+            status="success",
+        )
+
+        return RecommendationResponse(
+            user_id=recommendation_request.user_id,
+            recommendations=recommendations,
+            model_name=get_model_name(),
+            model_version=get_model_version(),
+            request_id=request_id,
+            latency_ms=latency_ms,
+        )
+
+    except HTTPException:
+        PREDICTION_ERRORS.inc()
+        raise
+
+    except Exception as exc:
+        latency_ms = round((time() - start_time) * 1000, 2)
+        PREDICTION_ERRORS.inc()
+
+        log_event(
+            "recommendation_failed",
+            request_id=request_id,
+            model_name=get_model_name(),
+            model_version=get_model_version(),
+            model_run_id=MODEL_RUN_ID,
+            user_id=recommendation_request.user_id,
+            latency_ms=latency_ms,
+            status="error",
+            error=str(exc),
+        )
+
+        raise HTTPException(status_code=500, detail="Recommendation failed")
