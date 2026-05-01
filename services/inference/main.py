@@ -127,6 +127,11 @@ class RecommendationResponse(BaseModel):
     request_id: str
     latency_ms: float
 
+class MovieMetadataResponse(BaseModel):
+    movie_id: int
+    title: str
+    genres: str
+
 
 def log_event(event_name: str, **fields) -> None:
     log_record = {"event": event_name, **fields}
@@ -301,6 +306,22 @@ def ready() -> dict[str, str]:
 @app.get("/metrics")
 def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+@app.get("/movies/{movie_id}", response_model=MovieMetadataResponse)
+def get_movie(movie_id: int) -> MovieMetadataResponse:
+    metadata = movies_metadata.get(movie_id)
+
+    if not metadata:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Unknown movie_id: {movie_id}",
+        )
+
+    return MovieMetadataResponse(
+        movie_id=movie_id,
+        title=metadata["title"],
+        genres=metadata["genres"],
+    )
 
 
 @app.post("/predict", response_model=PredictionResponse)
