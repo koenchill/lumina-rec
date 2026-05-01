@@ -24,6 +24,24 @@ x-api-key: local-dev-api-key
 | user_id | integer | Must exist in the approved MovieLens user mapping |
 | top_n | integer | Optional. Defaults to 10. Must be between 1 and 50 |
 
+## GET /movies/{movie_id}
+
+### Request
+
+```http
+GET /movies/1
+```
+
+### Response
+
+```json
+{
+  "movie_id": 1,
+  "title": "Toy Story (1995)",
+  "genres": "Adventure|Animation|Children|Comedy|Fantasy"
+}
+```
+
 ### Success Response
 
 ```json
@@ -69,3 +87,4 @@ x-api-key: local-dev-api-key
 | Invalid `top_n` | 422 |
 | Unknown `user_id` | 404 |
 | GET | /movies/{movie_id} | No | Returns movie title and genre metadata |
+
