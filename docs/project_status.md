@@ -60,6 +60,7 @@ The project has moved beyond the original demo model. It now trains a PyTorch ma
 - Added data dictionary
 - Added repository structure documentation
 - Added `/movies/{movie_id}` endpoint for movie title and genre lookup
+- Added `/movies/{movie_id}` endpoint for movie title and genre lookup
 
 ## Current Working Commands
 
@@ -70,6 +71,7 @@ The project has moved beyond the original demo model. It now trains a PyTorch ma
 .\scripts\lumina.ps1 recommend
 .\scripts\lumina.ps1 test
 .\scripts\lumina.ps1 load-test
+.\scripts\lumina.ps1 movie
 .\scripts\lumina.ps1 movie
 .\scripts\lumina.ps1 movie
 ```
