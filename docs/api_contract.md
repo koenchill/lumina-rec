@@ -68,3 +68,4 @@ x-api-key: local-dev-api-key
 | Missing `user_id` | 422 |
 | Invalid `top_n` | 422 |
 | Unknown `user_id` | 404 |
+| GET | /movies/{movie_id} | No | Returns movie title and genre metadata |
