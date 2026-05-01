@@ -32,6 +32,8 @@ def test_ready_endpoint():
     assert body["model_artifact_path"] == APPROVED_MODEL_ARTIFACT_PATH
     assert body["model_sha256"] == APPROVED_MODEL_SHA256
     assert body["checksum_validation"] == "enabled"
+    assert body["movie_metadata_status"] == "loaded"
+    assert int(body["movie_metadata_count"]) > 0
 
 
 def test_predict_endpoint():
@@ -66,7 +68,11 @@ def test_recommend_endpoint():
 
     first_item = body["recommendations"][0]
     assert "movie_id" in first_item
+    assert "title" in first_item
+    assert "genres" in first_item
     assert "predicted_rating" in first_item
+    assert first_item["title"] != ""
+    assert first_item["genres"] != ""
 
 
 def test_predict_rejects_missing_api_key():
@@ -111,6 +117,26 @@ def test_predict_rejects_unknown_movie_id():
     response = client.post("/predict", json=payload, headers=API_HEADERS)
 
     assert response.status_code == 404
+
+
+def test_recommend_rejects_missing_api_key():
+    payload = {"user_id": 1, "top_n": 10}
+
+    response = client.post("/recommend", json=payload)
+
+    assert response.status_code == 401
+
+
+def test_recommend_rejects_bad_api_key():
+    payload = {"user_id": 1, "top_n": 10}
+
+    response = client.post(
+        "/recommend",
+        json=payload,
+        headers={"x-api-key": "wrong-key"},
+    )
+
+    assert response.status_code == 401
 
 
 def test_recommend_rejects_unknown_user_id():
