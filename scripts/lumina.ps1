@@ -13,8 +13,8 @@ param(
         "metrics",
         "predict",
         "recommend",
-        "load-test",
         "movie",
+        "load-test",
         "wait"
     )]
     [string]$Task
@@ -116,6 +116,14 @@ switch ($Task) {
             -Body '{"user_id":1,"top_n":10}'
     }
 
+    "movie" {
+        Wait-ForInferenceApi
+
+        Invoke-RestMethod `
+            -Uri http://localhost:8001/movies/1 `
+            -Method Get
+    }
+
     "load-test" {
         Wait-ForInferenceApi
 
@@ -129,13 +137,5 @@ switch ($Task) {
             -r 2 `
             -t 60s `
             --html .\tests\load\load_test_report.html
-    }
-
-    "movie" {
-        Wait-ForInferenceApi
-
-        Invoke-RestMethod `
-            -Uri http://localhost:8001/movies/1 `
-            -Method Get
     }
 }
