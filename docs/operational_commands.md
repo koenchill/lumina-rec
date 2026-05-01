@@ -87,6 +87,20 @@ request_id
 latency_ms
 ```
 
+## Get Movie Metadata
+
+```powershell
+.\scripts\lumina.ps1 movie
+```
+
+Expected response fields:
+
+```text
+movie_id
+title
+genres
+```
+
 ## Metrics
 
 ```powershell
