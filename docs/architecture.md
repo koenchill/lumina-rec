@@ -6,6 +6,19 @@ Lumina Rec is a local MLOps recommendation system that demonstrates model traini
 
 The current model is a MovieLens matrix factorization recommender trained on the MovieLens latest small dataset.
 
+## Current Approved Model
+
+| Field | Value |
+|---|---|
+| Model name | lumina-rec-movielens-mf |
+| Model version | 0.2.0 |
+| Dataset | MovieLens latest small |
+| Model type | Matrix factorization |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| Artifact path | approved_model |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
+
 ## Architecture Diagram
 
 ```mermaid
@@ -18,7 +31,7 @@ flowchart LR
     MinIO[(MinIO Artifact Store)]
     Client[Client]
     API[FastAPI Inference API]
-    Approved[Approved MLflow Model Artifact]
+    Approved[Approved MLflow Artifacts]
     Model[MovieLens Matrix Factorization Model]
     Metrics[Prometheus Metrics]
     Logs[Structured JSON Logs]
@@ -31,7 +44,8 @@ flowchart LR
     MinIO --> Approved
 
     Client -->|POST /predict with x-api-key| API
-    API -->|downloads approved artifact by MODEL_RUN_ID| MLflow
+    Client -->|POST /recommend with x-api-key| API
+    API -->|downloads approved artifacts by MODEL_RUN_ID| MLflow
     API -->|verifies SHA256| Approved
     Approved --> Model
     Model --> API
@@ -51,17 +65,6 @@ The training workflow:
 5. Logs model metadata, mappings, and movie metadata to MLflow.
 6. Records the model SHA256 checksum.
 
-Current approved run:
-
-| Field | Value |
-|---|---|
-| Model name | lumina-rec-movielens-mf |
-| Model version | 0.2.0 |
-| MLflow run ID | 248c55bf41994c05923a86e354158303 |
-| Artifact path | approved_model |
-| Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
-| Dataset | MovieLens latest small |
-
 ## Inference Flow
 
 The inference service:
@@ -73,13 +76,14 @@ The inference service:
 5. Loads `model_metadata.json`.
 6. Loads `movielens_mappings.json`.
 7. Verifies the model SHA256 checksum.
-8. Serves predictions through `/predict`.
+8. Serves rating predictions through `/predict`.
+9. Serves top N recommendations through `/recommend`.
 
 ## Local Services
 
 | Service | Role | URL |
 |---|---|---|
-| FastAPI Inference | Serves MovieLens rating predictions | http://localhost:8001 |
+| FastAPI Inference | Serves MovieLens rating predictions and recommendations | http://localhost:8001 |
 | MLflow | Tracks experiments and approved model artifacts | http://localhost:5000 |
 | MinIO | Stores MLflow artifacts | http://localhost:9001 |
 | Postgres | Stores MLflow metadata | localhost:5433 |
@@ -97,6 +101,7 @@ The inference API exposes:
 | GET /ready | Confirms approved MLflow model artifact is loaded | Open locally |
 | GET /metrics | Exposes metrics | Open locally |
 | POST /predict | Predicts a MovieLens rating | Requires API key |
+| POST /recommend | Returns top N movie recommendations | Requires API key |
 
 ## Prediction Request
 
@@ -117,7 +122,38 @@ The inference API exposes:
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
   "request_id": "example-request-id",
-  "latency_ms": 9.25
+  "latency_ms": 0.67
+}
+```
+
+## Recommendation Request
+
+```json
+{
+  "user_id": 1,
+  "top_n": 10
+}
+```
+
+## Recommendation Response
+
+```json
+{
+  "user_id": 1,
+  "recommendations": [
+    {
+      "movie_id": 2,
+      "predicted_rating": 5.0
+    },
+    {
+      "movie_id": 3,
+      "predicted_rating": 5.0
+    }
+  ],
+  "model_name": "lumina-rec-movielens-mf",
+  "model_version": "0.2.0",
+  "request_id": "example-request-id",
+  "latency_ms": 3.83
 }
 ```
 
@@ -126,8 +162,10 @@ The inference API exposes:
 Current controls include:
 
 - API key authentication for `/predict`
+- API key authentication for `/recommend`
 - Input validation with Pydantic
 - Unknown user and movie rejection
+- Bounded `top_n` recommendation size
 - Configurable rate limiting
 - Model checksum validation
 - Approved model loading through MLflow
@@ -160,7 +198,7 @@ If `MODEL_SHA256` is set and does not match the downloaded MLflow artifact, the 
 Current approved checksum:
 
 ```text
-c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6
+205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
 ```
 
 ## Local Validation
@@ -174,15 +212,18 @@ The current stack has validated:
 - `/health` passed
 - `/ready` passed
 - `/predict` passed with `user_id` and `movie_id`
+- `/recommend` passed with `user_id` and `top_n`
 - `/metrics` passed
 - API tests passed
-- Load test passed before the MovieLens transition
+- Load test passed with zero failures
 
 ## Future Architecture Improvements
 
-- Improve model performance beyond baseline RMSE
-- Add top N recommendation endpoint
-- Add movie metadata to prediction response
+- Add movie title and genre metadata to recommendation responses
+- Add `/movies/{movie_id}` lookup endpoint
+- Add MLflow Model Registry alias for approved model selection
+- Add dataset checksum validation
+- Add signed artifact verification
 - Add Feast feature store workflow
 - Add JWT based authentication
 - Restrict metrics to internal monitoring
