@@ -10,6 +10,8 @@ This applies when:
 
 - A new model produces bad predictions
 - `/ready` fails after a model update
+- `/predict` fails after a model update
+- `/recommend` fails after a model update
 - Model checksum validation fails
 - Load testing fails after a model update
 - Inference latency increases after a model update
@@ -24,6 +26,15 @@ This applies when:
 | Model version | 0.2.0 |
 | Dataset | MovieLens latest small |
 | Model type | Matrix factorization |
+| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| Artifact path | approved_model |
+| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
+| Test RMSE | 2.0162 |
+
+## Previous Approved Model
+
+| Field | Value |
+|---|---|
 | MLflow run ID | 248c55bf41994c05923a86e354158303 |
 | Artifact path | approved_model |
 | Model SHA256 | c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6 |
@@ -34,9 +45,11 @@ This applies when:
 Rollback should be considered if any of these occur:
 
 - `/predict` returns repeated 500 errors
+- `/recommend` returns repeated 500 errors
 - `/ready` fails
 - Checksum validation fails
 - Prediction quality is worse than the previous accepted model
+- Recommendation behavior is incorrect or unstable
 - Load test failure rate is above 0%
 - p95 latency exceeds the accepted baseline
 - The model artifact differs from the approved checksum
@@ -50,6 +63,7 @@ Rollback should be considered if any of these occur:
 | Health check | 200 OK |
 | Readiness check | 200 OK |
 | Prediction check | 200 OK |
+| Recommendation check | 200 OK |
 | API tests | Pass |
 | Load test | 0 failures |
 | Checksum validation | enabled |
@@ -71,7 +85,7 @@ Rollback should be considered if any of these occur:
 
 ## Rollback Steps
 
-### 1. Identify the known good MLflow run
+### 1. Identify the rollback MLflow run
 
 Open MLflow:
 
@@ -79,13 +93,13 @@ Open MLflow:
 http://localhost:5000
 ```
 
-Find the previous accepted run and confirm:
+Confirm:
 
 - Run ID
-- Model artifact path
+- Artifact path
 - Model SHA256
-- Test metrics
-- Logged artifacts under `approved_model`
+- Test RMSE
+- Required artifacts under `approved_model`
 
 ### 2. Stop inference
 
@@ -98,9 +112,9 @@ docker compose stop inference
 Set the rollback values:
 
 ```env
-MODEL_RUN_ID=<approved_rollback_run_id>
+MODEL_RUN_ID=248c55bf41994c05923a86e354158303
 MODEL_ARTIFACT_PATH=approved_model
-MODEL_SHA256=<approved_rollback_model_sha256>
+MODEL_SHA256=c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6
 ```
 
 Do not commit `.env`.
@@ -114,9 +128,9 @@ docker compose config | Select-String "MODEL_RUN_ID|MODEL_ARTIFACT_PATH|MODEL_SH
 Expected result:
 
 ```text
-MODEL_RUN_ID: <approved_rollback_run_id>
+MODEL_RUN_ID: 248c55bf41994c05923a86e354158303
 MODEL_ARTIFACT_PATH: approved_model
-MODEL_SHA256: <approved_rollback_model_sha256>
+MODEL_SHA256: c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6
 ```
 
 ### 5. Remove the current inference container
@@ -141,10 +155,10 @@ Expected result:
 
 ```text
 status: ready
-model_run_id: <approved_rollback_run_id>
+model_run_id: 248c55bf41994c05923a86e354158303
 model_artifact_path: approved_model
 checksum_validation: enabled
-model_sha256: <approved_rollback_model_sha256>
+model_sha256: c276920f586da4cf246c20e1b5b4142f022fae1f7c402dd725475712bf1374b6
 ```
 
 ### 8. Validate prediction
@@ -153,7 +167,7 @@ model_sha256: <approved_rollback_model_sha256>
 .\scripts\lumina.ps1 predict
 ```
 
-Expected result:
+Expected response fields:
 
 ```text
 predicted_rating
@@ -165,13 +179,30 @@ request_id
 latency_ms
 ```
 
-### 9. Run automated tests
+### 9. Validate recommendation
+
+```powershell
+.\scripts\lumina.ps1 recommend
+```
+
+Expected response fields:
+
+```text
+user_id
+recommendations
+model_name
+model_version
+request_id
+latency_ms
+```
+
+### 10. Run automated tests
 
 ```powershell
 .\scripts\lumina.ps1 test
 ```
 
-### 10. Run load test
+### 11. Run load test
 
 ```powershell
 .\scripts\lumina.ps1 load-test
@@ -190,7 +221,7 @@ Expected result:
 Symptom:
 
 ```text
-MODEL_RUN_ID is missing, invalid, or artifacts cannot be found
+Run with id=<run_id> not found
 ```
 
 Action:
@@ -211,7 +242,7 @@ Model checksum validation failed
 Action:
 
 - Confirm `MODEL_SHA256` matches the approved model artifact
-- Recalculate the model artifact hash only from the approved artifact
+- Confirm the artifact belongs to the selected `MODEL_RUN_ID`
 - Do not bypass checksum validation unless debugging locally
 
 ### MinIO artifact access fails
@@ -229,7 +260,17 @@ Action:
 - Confirm MinIO is running
 - Confirm MLflow is running
 - Confirm S3 environment variables are present in Compose
-- Confirm bucket and artifacts exist
+- Confirm bucket exists
+
+```powershell
+docker compose exec minio mc ls local
+```
+
+Expected bucket:
+
+```text
+mlflow-artifacts
+```
 
 ## Post Rollback Review
 
@@ -249,6 +290,8 @@ Document:
 - Require checksum approval before deployment
 - Track approved artifacts in MLflow
 - Compare new model metrics against baseline
+- Validate `/predict` before promotion
+- Validate `/recommend` before promotion
 - Run automated tests before serving new model
 - Run load test before accepting deployment
 - Keep previous known good MLflow run available
