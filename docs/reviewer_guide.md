@@ -62,6 +62,7 @@ Run:
 .\scripts\lumina.ps1 predict
 .\scripts\lumina.ps1 recommend
 .\scripts\lumina.ps1 test
+.\scripts\lumina.ps1 movie
 ```
 
 Expected result:
@@ -70,6 +71,7 @@ Expected result:
 - `/predict` returns a rating prediction
 - `/recommend` returns a top N recommendation list
 - API tests pass
+- `/movies/{movie_id}` returns movie title and genre metadata
 
 ## Docker Validation
 
