@@ -106,3 +106,13 @@ x-api-key: local-dev-api-key
 | Invalid `top_n` | 422 |
 | Unknown user_id | 404 |
 | Unknown movie_id | 404 |
+
+## Current Limitation
+
+Recommendation responses currently return `movie_id` and `predicted_rating`.
+
+Next improvement:
+
+- Add movie title
+- Add genre metadata
+- Add `/movies/{movie_id}` lookup endpoint
