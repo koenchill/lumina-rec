@@ -55,11 +55,12 @@ Lumina Rec can:
 - Run API tests
 - Run load tests
 - Document operations, security, testing, rollback, and promotion
+- Look up movie title and genre metadata by movie ID
 
 ## Latest Completed Build Task
 
-Added movie title and genre metadata to `/recommend` responses.
+Added `/movies/{movie_id}` lookup endpoint.
 
 ## Next Build Task
 
-Add `/movies/{movie_id}` lookup endpoint.
+Add MLflow Model Registry alias for approved model selection.
