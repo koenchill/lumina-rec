@@ -58,6 +58,7 @@ x-api-key: local-dev-api-key
 | title | string | Movie title from `movies_metadata.csv` |
 | genres | string | Pipe separated MovieLens genres |
 | predicted_rating | float | Predicted rating for the recommended movie |
+| GET | /movies/{movie_id} | Returns title and genre metadata for one movie |
 
 ### Error Responses
 

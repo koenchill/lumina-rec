@@ -28,6 +28,7 @@ The local MLOps recommendation system is working, documented, and now returns mo
 | GET /metrics | Working |
 | POST /predict | Working |
 | POST /recommend | Working |
+| GET /movies/{movie_id} | Working |
 
 ## Validation Commands
 

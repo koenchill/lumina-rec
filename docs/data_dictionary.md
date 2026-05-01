@@ -69,6 +69,14 @@ MovieLens latest small.
 | request_id | string | Unique request identifier |
 | latency_ms | float | Request processing time in milliseconds |
 
+### GET /movies/{movie_id}
+
+| Field | Type | Description |
+|---|---|---|
+| movie_id | integer | MovieLens movie ID |
+| title | string | Movie title from `movies_metadata.csv` |
+| genres | string | Pipe separated MovieLens genres |
+
 ### POST /recommend
 
 | Field | Type | Description |
