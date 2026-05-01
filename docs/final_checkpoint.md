@@ -6,7 +6,7 @@ Lumina Rec
 
 ## Status
 
-The local MLOps recommendation system is working and documented.
+The local MLOps recommendation system is working, documented, and now returns movie metadata in recommendation responses.
 
 ## Current Approved Model
 
@@ -36,3 +36,29 @@ The local MLOps recommendation system is working and documented.
 .\scripts\lumina.ps1 predict
 .\scripts\lumina.ps1 recommend
 .\scripts\lumina.ps1 test
+```
+
+## Current Capability
+
+Lumina Rec can:
+
+- Train a MovieLens recommender
+- Log model artifacts to MLflow
+- Store artifacts in MinIO
+- Use Postgres as the MLflow backend
+- Load approved artifacts by run ID
+- Verify model checksum
+- Serve rating predictions
+- Serve top N recommendations
+- Return movie title and genre metadata in recommendations
+- Run API tests
+- Run load tests
+- Document operations, security, testing, rollback, and promotion
+
+## Latest Completed Build Task
+
+Added movie title and genre metadata to `/recommend` responses.
+
+## Next Build Task
+
+Add `/movies/{movie_id}` lookup endpoint.
