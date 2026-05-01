@@ -7,6 +7,7 @@ from time import time
 from uuid import uuid4
 
 import mlflow
+import pandas as pd
 import torch
 import torch.nn as nn
 from dotenv import load_dotenv
@@ -50,17 +51,17 @@ app.add_middleware(SlowAPIMiddleware)
 
 PREDICTION_REQUESTS = Counter(
     "lumina_prediction_requests_total",
-    "Total number of prediction requests",
+    "Total number of prediction and recommendation requests",
 )
 
 PREDICTION_ERRORS = Counter(
     "lumina_prediction_errors_total",
-    "Total number of failed prediction requests",
+    "Total number of failed prediction and recommendation requests",
 )
 
 PREDICTION_LATENCY = Histogram(
     "lumina_prediction_latency_ms",
-    "Prediction latency in milliseconds",
+    "Prediction and recommendation latency in milliseconds",
 )
 
 RATE_LIMIT_ERRORS = Counter(
@@ -113,6 +114,8 @@ class RecommendationRequest(BaseModel):
 
 class RecommendationItem(BaseModel):
     movie_id: int
+    title: str
+    genres: str
     predicted_rating: float
 
 
@@ -183,6 +186,18 @@ def load_json(file_path: Path) -> dict:
     return json.loads(file_path.read_text(encoding="utf-8"))
 
 
+def load_movies_metadata(file_path: Path) -> dict[int, dict[str, str]]:
+    movies_metadata_df = pd.read_csv(file_path)
+
+    return {
+        int(row["movieId"]): {
+            "title": str(row["title"]),
+            "genres": str(row["genres"]),
+        }
+        for _, row in movies_metadata_df.iterrows()
+    }
+
+
 def get_model_name() -> str:
     return model_metadata.get("model_name", DEFAULT_MODEL_NAME)
 
@@ -191,12 +206,13 @@ def get_model_version() -> str:
     return model_metadata.get("model_version", DEFAULT_MODEL_VERSION)
 
 
-def load_model() -> tuple[nn.Module, dict, dict, str]:
+def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]:
     artifact_dir = download_approved_artifacts()
 
     model_path = artifact_dir / "recommender_model.pt"
     metadata_path = artifact_dir / "model_metadata.json"
     mappings_path = artifact_dir / "movielens_mappings.json"
+    movies_metadata_path = artifact_dir / "movies_metadata.csv"
 
     if not model_path.exists():
         raise FileNotFoundError(f"Approved model file not found: {model_path}")
@@ -206,6 +222,9 @@ def load_model() -> tuple[nn.Module, dict, dict, str]:
 
     if not mappings_path.exists():
         raise FileNotFoundError(f"MovieLens mappings file not found: {mappings_path}")
+
+    if not movies_metadata_path.exists():
+        raise FileNotFoundError(f"Movie metadata file not found: {movies_metadata_path}")
 
     actual_sha256 = calculate_sha256(model_path)
 
@@ -221,6 +240,7 @@ def load_model() -> tuple[nn.Module, dict, dict, str]:
 
     metadata = load_json(metadata_path)
     mappings = load_json(mappings_path)
+    movies_metadata = load_movies_metadata(movies_metadata_path)
 
     model_payload = torch.load(
         model_path,
@@ -246,12 +266,13 @@ def load_model() -> tuple[nn.Module, dict, dict, str]:
         artifact_path=MODEL_ARTIFACT_PATH,
         model_sha256=actual_sha256,
         checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
+        movie_metadata_count=len(movies_metadata),
     )
 
-    return loaded_model, metadata, mappings, actual_sha256
+    return loaded_model, metadata, mappings, movies_metadata, actual_sha256
 
 
-model, model_metadata, model_mappings, model_actual_sha256 = load_model()
+model, model_metadata, model_mappings, movies_metadata, model_actual_sha256 = load_model()
 
 
 @app.get("/health")
@@ -272,6 +293,8 @@ def ready() -> dict[str, str]:
         "model_artifact_path": MODEL_ARTIFACT_PATH,
         "model_sha256": model_actual_sha256,
         "checksum_validation": "enabled" if MODEL_SHA256 else "not_configured",
+        "movie_metadata_status": "loaded",
+        "movie_metadata_count": str(len(movies_metadata)),
     }
 
 
@@ -410,13 +433,26 @@ def recommend(
 
         top_items = ranked[: recommendation_request.top_n]
 
-        recommendations = [
-            RecommendationItem(
-                movie_id=int(idx_to_movie[str(movie_idx)]),
-                predicted_rating=round(float(score), 4),
+        recommendations = []
+
+        for movie_idx, score in top_items:
+            movie_id = int(idx_to_movie[str(movie_idx)])
+            metadata = movies_metadata.get(
+                movie_id,
+                {
+                    "title": "Unknown title",
+                    "genres": "Unknown",
+                },
             )
-            for movie_idx, score in top_items
-        ]
+
+            recommendations.append(
+                RecommendationItem(
+                    movie_id=movie_id,
+                    title=metadata["title"],
+                    genres=metadata["genres"],
+                    predicted_rating=round(float(score), 4),
+                )
+            )
 
         latency_ms = round((time() - start_time) * 1000, 2)
 
