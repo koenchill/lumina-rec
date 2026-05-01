@@ -14,6 +14,7 @@ param(
         "predict",
         "recommend",
         "load-test",
+        "movie",
         "wait"
     )]
     [string]$Task
@@ -128,5 +129,13 @@ switch ($Task) {
             -r 2 `
             -t 60s `
             --html .\tests\load\load_test_report.html
+    }
+
+    "movie" {
+        Wait-ForInferenceApi
+
+        Invoke-RestMethod `
+            -Uri http://localhost:8001/movies/1 `
+            -Method Get
     }
 }
