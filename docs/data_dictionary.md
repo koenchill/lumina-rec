@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the dataset fields, derived fields, and model artifacts used by Lumina Rec.
+This document defines the dataset fields, derived fields, API request fields, API response fields, and model artifacts used by Lumina Rec.
 
 ## Dataset
 
@@ -36,28 +36,28 @@ MovieLens latest small.
 
 | Field | Type | Description |
 |---|---|---|
-| user_idx | integer | Encoded user index used by the PyTorch embedding layer |
-| movie_idx | integer | Encoded movie index used by the PyTorch embedding layer |
+| user_idx | integer | Encoded user index used by the PyTorch user embedding layer |
+| movie_idx | integer | Encoded movie index used by the PyTorch movie embedding layer |
 
-## Model Input Fields
+## API Request Fields
 
-## `/predict`
+### POST /predict
 
 | Field | Type | Rule |
 |---|---|---|
 | user_id | integer | Must exist in `movielens_mappings.json` |
 | movie_id | integer | Must exist in `movielens_mappings.json` |
 
-## `/recommend`
+### POST /recommend
 
 | Field | Type | Rule |
 |---|---|---|
 | user_id | integer | Must exist in `movielens_mappings.json` |
-| top_n | integer | Must be between 1 and 50 |
+| top_n | integer | Optional. Defaults to 10. Must be between 1 and 50 |
 
-## Model Output Fields
+## API Response Fields
 
-## `/predict`
+### POST /predict
 
 | Field | Type | Description |
 |---|---|---|
@@ -69,13 +69,15 @@ MovieLens latest small.
 | request_id | string | Unique request identifier |
 | latency_ms | float | Request processing time in milliseconds |
 
-## `/recommend`
+### POST /recommend
 
 | Field | Type | Description |
 |---|---|---|
 | user_id | integer | Requested user ID |
 | recommendations | list | Ranked list of recommended movies |
 | movie_id | integer | Recommended MovieLens movie ID |
+| title | string | Movie title from `movies_metadata.csv` |
+| genres | string | Pipe separated MovieLens genres |
 | predicted_rating | float | Predicted rating for the recommended movie |
 | model_name | string | Approved model name |
 | model_version | string | Approved model version |
@@ -97,6 +99,31 @@ MovieLens latest small.
 |---|---|
 | Model name | lumina-rec-movielens-mf |
 | Model version | 0.2.0 |
+| Dataset | MovieLens latest small |
+| Model type | Matrix factorization |
 | MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
+| Artifact path | approved_model |
 | Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
 | Test RMSE | 2.0162 |
+
+## Validation Notes
+
+The `/recommend` response now includes movie metadata.
+
+Expected recommendation item fields:
+
+```json
+{
+  "movie_id": 2,
+  "title": "Jumanji (1995)",
+  "genres": "Adventure|Children|Fantasy",
+  "predicted_rating": 5.0
+}
+```
+
+## Known Limitations
+
+- Movie metadata is loaded from the approved MLflow artifact package.
+- Missing metadata falls back to `Unknown title` and `Unknown`.
+- No `/movies/{movie_id}` lookup endpoint exists yet.
+- No genre filter exists yet.
