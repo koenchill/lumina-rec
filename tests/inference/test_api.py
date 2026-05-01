@@ -36,6 +36,22 @@ def test_ready_endpoint():
     assert int(body["movie_metadata_count"]) > 0
 
 
+def test_movie_metadata_endpoint():
+    response = client.get("/movies/1")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["movie_id"] == 1
+    assert body["title"] == "Toy Story (1995)"
+    assert body["genres"] == "Adventure|Animation|Children|Comedy|Fantasy"
+
+
+def test_movie_metadata_rejects_unknown_movie_id():
+    response = client.get("/movies/999999999")
+
+    assert response.status_code == 404
+
+
 def test_predict_endpoint():
     payload = {"user_id": 1, "movie_id": 1}
 
