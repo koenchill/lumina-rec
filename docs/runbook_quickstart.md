@@ -72,6 +72,10 @@ docker compose up -d --build inference
 .\scripts\lumina.ps1 predict
 .\scripts\lumina.ps1 recommend
 .\scripts\lumina.ps1 movie
+.\scripts\lumina.ps1 ready
+.\scripts\lumina.ps1 predict
+.\scripts\lumina.ps1 recommend
+.\scripts\lumina.ps1 movie
 ```
 
 ## Expected Predict Response Fields
@@ -95,6 +99,13 @@ model_name
 model_version
 request_id
 latency_ms
+movie_id
+title
+genres
+```
+## Expected Movie Lookup Response Fields
+
+```text
 movie_id
 title
 genres

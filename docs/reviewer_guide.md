@@ -72,7 +72,7 @@ Expected result:
 - `/recommend` returns a top N recommendation list
 - API tests pass
 - `/movies/{movie_id}` returns movie title and genre metadata
-
+- `/movies/{movie_id}` returns movie title and genre metadata
 ## Docker Validation
 
 Run:
