@@ -13,6 +13,7 @@ import torch.nn as nn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.responses import Response
+from mlflow.tracking import MlflowClient
 from prometheus_client import CONTENT_TYPE_LATEST, Counter, Histogram, generate_latest
 from pydantic import BaseModel, Field
 from slowapi import Limiter
@@ -26,6 +27,10 @@ load_dotenv()
 MODEL_RUN_ID = os.getenv("MODEL_RUN_ID")
 MODEL_ARTIFACT_PATH = os.getenv("MODEL_ARTIFACT_PATH", "approved_model")
 MODEL_SHA256 = os.getenv("MODEL_SHA256")
+
+USE_MODEL_REGISTRY = os.getenv("USE_MODEL_REGISTRY", "false").lower() == "true"
+REGISTERED_MODEL_NAME = os.getenv("REGISTERED_MODEL_NAME", "lumina-rec-movielens-mf")
+MODEL_ALIAS = os.getenv("MODEL_ALIAS", "approved")
 
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 APPROVED_MODEL_DIR = Path(os.getenv("APPROVED_MODEL_DIR", "ml/models/approved"))
@@ -127,6 +132,7 @@ class RecommendationResponse(BaseModel):
     request_id: str
     latency_ms: float
 
+
 class MovieMetadataResponse(BaseModel):
     movie_id: int
     title: str
@@ -170,21 +176,44 @@ def verify_api_key(x_api_key: str | None) -> None:
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
-def download_approved_artifacts() -> Path:
-    if not MODEL_RUN_ID:
-        raise ValueError("MODEL_RUN_ID is required to load approved MLflow artifacts")
+def resolve_model_run_id() -> str:
+    if MODEL_RUN_ID:
+        return MODEL_RUN_ID
+
+    if not USE_MODEL_REGISTRY:
+        raise ValueError("MODEL_RUN_ID is required unless USE_MODEL_REGISTRY=true")
+
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
+
+    client = MlflowClient(tracking_uri=MLFLOW_TRACKING_URI)
+
+    model_version = client.get_model_version_by_alias(
+        name=REGISTERED_MODEL_NAME,
+        alias=MODEL_ALIAS,
+    )
+
+    if not model_version.run_id:
+        raise ValueError(
+            f"No run ID found for model alias: {REGISTERED_MODEL_NAME}@{MODEL_ALIAS}"
+        )
+
+    return model_version.run_id
+
+
+def download_approved_artifacts() -> tuple[Path, str]:
+    resolved_run_id = resolve_model_run_id()
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
 
     APPROVED_MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     artifact_local_path = mlflow.artifacts.download_artifacts(
-        run_id=MODEL_RUN_ID,
+        run_id=resolved_run_id,
         artifact_path=MODEL_ARTIFACT_PATH,
         dst_path=str(APPROVED_MODEL_DIR),
     )
 
-    return Path(artifact_local_path)
+    return Path(artifact_local_path), resolved_run_id
 
 
 def load_json(file_path: Path) -> dict:
@@ -211,8 +240,12 @@ def get_model_version() -> str:
     return model_metadata.get("model_version", DEFAULT_MODEL_VERSION)
 
 
+def get_resolved_model_run_id() -> str:
+    return model_metadata.get("resolved_model_run_id", str(MODEL_RUN_ID))
+
+
 def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]:
-    artifact_dir = download_approved_artifacts()
+    artifact_dir, resolved_run_id = download_approved_artifacts()
 
     model_path = artifact_dir / "recommender_model.pt"
     metadata_path = artifact_dir / "model_metadata.json"
@@ -246,6 +279,7 @@ def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]
     metadata = load_json(metadata_path)
     mappings = load_json(mappings_path)
     movies_metadata = load_movies_metadata(movies_metadata_path)
+    metadata["resolved_model_run_id"] = resolved_run_id
 
     model_payload = torch.load(
         model_path,
@@ -267,10 +301,13 @@ def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]
         model_name=metadata.get("model_name", DEFAULT_MODEL_NAME),
         model_version=metadata.get("model_version", DEFAULT_MODEL_VERSION),
         model_path=str(model_path),
-        model_run_id=MODEL_RUN_ID,
+        model_run_id=resolved_run_id,
         artifact_path=MODEL_ARTIFACT_PATH,
         model_sha256=actual_sha256,
         checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
+        model_registry_enabled=str(USE_MODEL_REGISTRY).lower(),
+        registered_model_name=REGISTERED_MODEL_NAME,
+        model_alias=MODEL_ALIAS,
         movie_metadata_count=len(movies_metadata),
     )
 
@@ -294,10 +331,13 @@ def ready() -> dict[str, str]:
         "status": "ready",
         "model_name": get_model_name(),
         "model_version": get_model_version(),
-        "model_run_id": str(MODEL_RUN_ID),
+        "model_run_id": get_resolved_model_run_id(),
         "model_artifact_path": MODEL_ARTIFACT_PATH,
         "model_sha256": model_actual_sha256,
         "checksum_validation": "enabled" if MODEL_SHA256 else "not_configured",
+        "model_registry_enabled": str(USE_MODEL_REGISTRY).lower(),
+        "registered_model_name": REGISTERED_MODEL_NAME,
+        "model_alias": MODEL_ALIAS,
         "movie_metadata_status": "loaded",
         "movie_metadata_count": str(len(movies_metadata)),
     }
@@ -306,6 +346,7 @@ def ready() -> dict[str, str]:
 @app.get("/metrics")
 def metrics() -> Response:
     return Response(generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
 
 @app.get("/movies/{movie_id}", response_model=MovieMetadataResponse)
 def get_movie(movie_id: int) -> MovieMetadataResponse:
@@ -371,7 +412,7 @@ def predict(
             request_id=request_id,
             model_name=get_model_name(),
             model_version=get_model_version(),
-            model_run_id=MODEL_RUN_ID,
+            model_run_id=get_resolved_model_run_id(),
             user_id=prediction_request.user_id,
             movie_id=prediction_request.movie_id,
             latency_ms=latency_ms,
@@ -401,7 +442,7 @@ def predict(
             request_id=request_id,
             model_name=get_model_name(),
             model_version=get_model_version(),
-            model_run_id=MODEL_RUN_ID,
+            model_run_id=get_resolved_model_run_id(),
             latency_ms=latency_ms,
             status="error",
             error=str(exc),
@@ -485,7 +526,7 @@ def recommend(
             request_id=request_id,
             model_name=get_model_name(),
             model_version=get_model_version(),
-            model_run_id=MODEL_RUN_ID,
+            model_run_id=get_resolved_model_run_id(),
             user_id=recommendation_request.user_id,
             top_n=recommendation_request.top_n,
             latency_ms=latency_ms,
@@ -514,7 +555,7 @@ def recommend(
             request_id=request_id,
             model_name=get_model_name(),
             model_version=get_model_version(),
-            model_run_id=MODEL_RUN_ID,
+            model_run_id=get_resolved_model_run_id(),
             user_id=recommendation_request.user_id,
             latency_ms=latency_ms,
             status="error",
