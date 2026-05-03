@@ -1,7 +1,7 @@
 {
   "manifest_version": "1.0",
-  "created_at": "2026-05-03T18:11:13.926287+00:00",
-  "run_id": "5248dddd8e97477da7651507b418d989",
+  "created_at": "2026-05-03T20:58:25.632664+00:00",
+  "run_id": "8270e9b566fc4ac68774966dbfb2503d",
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
   "artifacts": {
@@ -10,8 +10,8 @@
       "size_bytes": 1367175
     },
     "model_metadata.json": {
-      "sha256": "58b27902c6c9ab2a79009dd33c991f0a8e40bdf137cf972a82b3b9f9febbf0b3",
-      "size_bytes": 693
+      "sha256": "cd1d262f0ea1b6fb4951804504de9262e98d64877d51d1895f95f8d9716aade8",
+      "size_bytes": 886
     },
     "movielens_mappings.json": {
       "sha256": "d6e5c56cd6f1c56219195ecb7ff60c2ea562c059af7222555a08d89998e16a96",
