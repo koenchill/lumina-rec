@@ -1,0 +1,10 @@
+{
+  "model_name": "lumina-rec-movielens-mf",
+  "model_version": "0.2.0",
+  "model_run_id": "5248dddd8e97477da7651507b418d989",
+  "model_sha256": "79d2b50837a3af983530db10179e46ae7f26c7467d8fed31cc2f1fa9804cc97d",
+  "model_artifact_path": "approved_model",
+  "test_rmse": 2.019,
+  "registered_model_name": "lumina-rec-movielens-mf",
+  "model_alias": "approved"
+}

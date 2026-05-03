@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
 from services.inference.main import app
@@ -6,11 +9,15 @@ client = TestClient(app)
 
 API_HEADERS = {"x-api-key": "local-dev-api-key"}
 
-APPROVED_MODEL_NAME = "lumina-rec-movielens-mf"
-APPROVED_MODEL_VERSION = "0.2.0"
-APPROVED_MODEL_RUN_ID = "14eda4cf03bd4d328a3ee791ec9a002f"
-APPROVED_MODEL_ARTIFACT_PATH = "approved_model"
-APPROVED_MODEL_SHA256 = "205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd"
+APPROVED_MODEL_CONFIG = json.loads(
+    Path("configs/approved_model.json").read_text(encoding="utf-8")
+)
+
+APPROVED_MODEL_NAME = APPROVED_MODEL_CONFIG["model_name"]
+APPROVED_MODEL_VERSION = APPROVED_MODEL_CONFIG["model_version"]
+APPROVED_MODEL_RUN_ID = APPROVED_MODEL_CONFIG["model_run_id"]
+APPROVED_MODEL_ARTIFACT_PATH = APPROVED_MODEL_CONFIG["model_artifact_path"]
+APPROVED_MODEL_SHA256 = APPROVED_MODEL_CONFIG["model_sha256"]
 
 
 def test_health_endpoint():
