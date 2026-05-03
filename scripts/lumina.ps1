@@ -73,7 +73,10 @@ switch ($Task) {
     }
 
     "test" {
-        pytest .\tests\inference\test_api.py .\tests\validation\test_dataset_checks.py
+        pytest
+            .\tests\inference\test_api.py `
+            .\tests\validation\test_dataset_checks.py `
+            .\tests\validation\test_artifact_manifest.py
     }
 
     "build-inference" {
