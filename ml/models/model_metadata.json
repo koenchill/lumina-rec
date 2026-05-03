@@ -1,13 +1,13 @@
 {
-  "run_id": "224416922bd84d14bf44e46af747cfe5",
+  "run_id": "0950994901504507b09d622b4c7b9aa4",
   "model_name": "lumina-rec-movielens-mf",
   "model_version": "0.2.0",
   "model_type": "matrix_factorization",
   "dataset": "movielens-latest-small",
-  "model_sha256": "c3366005b0f35709430498b3b2c2803d443981cb8931292031ea7858ed44197e",
+  "model_sha256": "c50a5f3d3a0e20a8bfd676c06804894f1d02e2bc704b41e33e3c4ea124de78b8",
   "num_users": 610,
   "num_movies": 9724,
   "embedding_dim": 32,
-  "test_mse": 4.14351548442036,
-  "test_rmse": 2.0355626947899097
+  "test_mse": 4.148958181993511,
+  "test_rmse": 2.0368991585234433
 }
