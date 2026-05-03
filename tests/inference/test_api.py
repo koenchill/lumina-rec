@@ -41,6 +41,37 @@ def test_ready_endpoint():
     assert body["checksum_validation"] == "enabled"
     assert body["movie_metadata_status"] == "loaded"
     assert int(body["movie_metadata_count"]) > 0
+    assert body["artifact_manifest_status"] == "validated"
+    assert body["artifact_manifest_version"] == "1.0"
+
+
+def test_version_endpoint():
+    response = client.get("/version")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["service_name"] == "lumina-rec-inference"
+    assert body["service_version"] == APPROVED_MODEL_VERSION
+    assert body["model_name"] == APPROVED_MODEL_NAME
+    assert body["model_version"] == APPROVED_MODEL_VERSION
+
+
+def test_model_endpoint():
+    response = client.get("/model")
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["model_name"] == APPROVED_MODEL_NAME
+    assert body["model_version"] == APPROVED_MODEL_VERSION
+    assert body["model_run_id"] == APPROVED_MODEL_RUN_ID
+    assert body["model_artifact_path"] == APPROVED_MODEL_ARTIFACT_PATH
+    assert body["model_sha256"] == APPROVED_MODEL_SHA256
+    assert body["checksum_validation"] == "enabled"
+    assert body["artifact_manifest_status"] == "validated"
+    assert body["artifact_manifest_version"] == "1.0"
+    assert "model_registry_enabled" in body
+    assert body["registered_model_name"] == APPROVED_MODEL_NAME
+    assert body["model_alias"] == "approved"
 
 
 def test_movie_metadata_endpoint():
