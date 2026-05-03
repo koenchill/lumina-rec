@@ -18,6 +18,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+from ml.evaluation.evaluate_recommender import evaluate_ranking_metrics
 from ml.validation.artifact_manifest import write_artifact_manifest
 
 load_dotenv()
@@ -46,6 +47,9 @@ EMBEDDING_DIM = 32
 EPOCHS = 5
 BATCH_SIZE = 512
 LEARNING_RATE = 0.01
+
+RANKING_K = 10
+RELEVANCE_THRESHOLD = 4.0
 
 
 class MatrixFactorizationModel(nn.Module):
@@ -106,6 +110,7 @@ def write_latest_training_run(
     run_id: str,
     model_sha256: str,
     test_rmse: float,
+    ranking_metrics: dict[str, float],
     model_name: str,
     model_version: str,
     artifact_path: str,
@@ -119,6 +124,11 @@ def write_latest_training_run(
         "model_sha256": model_sha256,
         "model_artifact_path": artifact_path,
         "test_rmse": round(float(test_rmse), 4),
+        "precision_at_10": ranking_metrics["precision_at_k"],
+        "recall_at_10": ranking_metrics["recall_at_k"],
+        "ndcg_at_10": ranking_metrics["ndcg_at_k"],
+        "catalog_coverage": ranking_metrics["catalog_coverage"],
+        "evaluated_users": ranking_metrics["evaluated_users"],
         "registered_model_name": model_name,
         "model_alias": "approved",
     }
@@ -231,6 +241,7 @@ def evaluate_model(
     model.eval()
 
     squared_errors = []
+
     with torch.no_grad():
         for user_idx, movie_idx, rating in test_loader:
             prediction = model(user_idx, movie_idx)
@@ -286,7 +297,16 @@ def main() -> None:
     )
 
     train_model(model, train_loader)
+
     test_rmse = evaluate_model(model, test_loader)
+
+    ranking_metrics = evaluate_ranking_metrics(
+        model=model,
+        test_df=test_df,
+        num_movies=num_movies,
+        k=RANKING_K,
+        relevance_threshold=RELEVANCE_THRESHOLD,
+    )
 
     mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     mlflow.set_experiment(MLFLOW_EXPERIMENT_NAME)
@@ -310,12 +330,19 @@ def main() -> None:
             "artifact_path": MODEL_ARTIFACT_PATH,
             "model_sha256": model_sha256,
             "test_rmse": round(float(test_rmse), 4),
+            "precision_at_10": ranking_metrics["precision_at_k"],
+            "recall_at_10": ranking_metrics["recall_at_k"],
+            "ndcg_at_10": ranking_metrics["ndcg_at_k"],
+            "catalog_coverage": ranking_metrics["catalog_coverage"],
+            "evaluated_users": ranking_metrics["evaluated_users"],
             "num_users": int(num_users),
             "num_movies": int(num_movies),
             "embedding_dim": int(EMBEDDING_DIM),
             "epochs": int(EPOCHS),
             "batch_size": int(BATCH_SIZE),
             "learning_rate": float(LEARNING_RATE),
+            "ranking_k": int(RANKING_K),
+            "relevance_threshold": float(RELEVANCE_THRESHOLD),
             "required_artifacts": [
                 model_path.name,
                 "model_metadata.json",
@@ -343,8 +370,15 @@ def main() -> None:
         mlflow.log_param("epochs", EPOCHS)
         mlflow.log_param("batch_size", BATCH_SIZE)
         mlflow.log_param("learning_rate", LEARNING_RATE)
+        mlflow.log_param("ranking_k", RANKING_K)
+        mlflow.log_param("relevance_threshold", RELEVANCE_THRESHOLD)
 
         mlflow.log_metric("test_rmse", float(test_rmse))
+        mlflow.log_metric("precision_at_10", ranking_metrics["precision_at_k"])
+        mlflow.log_metric("recall_at_10", ranking_metrics["recall_at_k"])
+        mlflow.log_metric("ndcg_at_10", ranking_metrics["ndcg_at_k"])
+        mlflow.log_metric("catalog_coverage", ranking_metrics["catalog_coverage"])
+        mlflow.log_metric("evaluated_users", ranking_metrics["evaluated_users"])
 
         mlflow.log_artifacts(str(MODEL_DIR), artifact_path=MODEL_ARTIFACT_PATH)
 
@@ -352,6 +386,7 @@ def main() -> None:
             run_id=run.info.run_id,
             model_sha256=model_sha256,
             test_rmse=test_rmse,
+            ranking_metrics=ranking_metrics,
             model_name=MODEL_NAME,
             model_version=MODEL_VERSION,
             artifact_path=MODEL_ARTIFACT_PATH,
@@ -361,6 +396,11 @@ def main() -> None:
         print(f"Run ID: {run.info.run_id}")
         print(f"Model SHA256: {model_sha256}")
         print(f"Test RMSE: {test_rmse:.4f}")
+        print(f"Precision@10: {ranking_metrics['precision_at_k']:.4f}")
+        print(f"Recall@10: {ranking_metrics['recall_at_k']:.4f}")
+        print(f"NDCG@10: {ranking_metrics['ndcg_at_k']:.4f}")
+        print(f"Catalog Coverage: {ranking_metrics['catalog_coverage']:.4f}")
+        print(f"Evaluated Users: {ranking_metrics['evaluated_users']:.0f}")
         print(f"Manifest: {manifest_path}")
         print(f"Latest training run: {LATEST_TRAINING_RUN_PATH}")
         print(f"MLflow URL: {MLFLOW_TRACKING_URI}")
