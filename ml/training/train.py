@@ -4,6 +4,11 @@ import os
 import urllib.request
 import zipfile
 from pathlib import Path
+import sys
+from pathlib import Path
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import mlflow
 import pandas as pd
@@ -13,6 +18,7 @@ from dotenv import load_dotenv
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader, TensorDataset
+from ml.validation.artifact_manifest import write_artifact_manifest
 
 load_dotenv()
 
@@ -127,6 +133,12 @@ def prepare_data():
 
     return train_df, test_df, len(user_ids), len(movie_ids), mapping_path, movie_metadata_path
 
+    write_artifact_manifest(
+    artifact_dir=MODEL_DIR,
+    run_id=run.info.run_id,
+    model_name=MODEL_NAME,
+    model_version=MODEL_VERSION,
+)
 
 def build_loader(dataframe: pd.DataFrame, batch_size: int) -> DataLoader:
     user_tensor = torch.tensor(dataframe["user_idx"].values, dtype=torch.long)
