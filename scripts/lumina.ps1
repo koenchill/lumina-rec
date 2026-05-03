@@ -6,6 +6,7 @@ param(
         "ps",
         "logs",
         "train",
+        "validate-data",
         "test",
         "build-inference",
         "health",
@@ -67,8 +68,12 @@ switch ($Task) {
         python .\ml\training\train.py
     }
 
+    "validate-data" {
+        python .\ml\validation\dataset_checks.py
+    }
+
     "test" {
-        pytest .\tests\inference\test_api.py
+        pytest .\tests\inference\test_api.py .\tests\validation\test_dataset_checks.py
     }
 
     "build-inference" {
