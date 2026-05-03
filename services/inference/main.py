@@ -2,14 +2,15 @@ import hashlib
 import json
 import logging
 import os
-from pathlib import Path
 import sys
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
+from pathlib import Path
 from time import time
 from uuid import uuid4
+
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 import mlflow
 import pandas as pd
@@ -26,6 +27,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
+
 from ml.validation.artifact_manifest import validate_artifact_manifest
 
 load_dotenv()
@@ -143,6 +145,27 @@ class MovieMetadataResponse(BaseModel):
     movie_id: int
     title: str
     genres: str
+
+
+class VersionResponse(BaseModel):
+    service_name: str
+    service_version: str
+    model_name: str
+    model_version: str
+
+
+class ModelInfoResponse(BaseModel):
+    model_name: str
+    model_version: str
+    model_run_id: str
+    model_artifact_path: str
+    model_sha256: str
+    checksum_validation: str
+    artifact_manifest_status: str
+    artifact_manifest_version: str
+    model_registry_enabled: str
+    registered_model_name: str
+    model_alias: str
 
 
 def log_event(event_name: str, **fields) -> None:
@@ -285,12 +308,13 @@ def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]
     metadata = load_json(metadata_path)
     mappings = load_json(mappings_path)
     movies_metadata = load_movies_metadata(movies_metadata_path)
+
     metadata["resolved_model_run_id"] = resolved_run_id
 
     manifest = validate_artifact_manifest(
-    artifact_dir=artifact_dir,
-    expected_run_id=resolved_run_id,
-)
+        artifact_dir=artifact_dir,
+        expected_run_id=resolved_run_id,
+    )
 
     metadata["artifact_manifest_status"] = "validated"
     metadata["artifact_manifest_version"] = manifest.get("manifest_version", "unknown")
@@ -356,9 +380,49 @@ def ready() -> dict[str, str]:
         "model_alias": MODEL_ALIAS,
         "movie_metadata_status": "loaded",
         "movie_metadata_count": str(len(movies_metadata)),
-        "artifact_manifest_status": model_metadata.get("artifact_manifest_status", "not_validated"),
-        "artifact_manifest_version": model_metadata.get("artifact_manifest_version", "unknown"),
+        "artifact_manifest_status": model_metadata.get(
+            "artifact_manifest_status",
+            "not_validated",
+        ),
+        "artifact_manifest_version": model_metadata.get(
+            "artifact_manifest_version",
+            "unknown",
+        ),
     }
+
+
+@app.get("/version", response_model=VersionResponse)
+def version() -> VersionResponse:
+    return VersionResponse(
+        service_name="lumina-rec-inference",
+        service_version=DEFAULT_MODEL_VERSION,
+        model_name=get_model_name(),
+        model_version=get_model_version(),
+    )
+
+
+@app.get("/model", response_model=ModelInfoResponse)
+def model_info() -> ModelInfoResponse:
+    return ModelInfoResponse(
+        model_name=get_model_name(),
+        model_version=get_model_version(),
+        model_run_id=get_resolved_model_run_id(),
+        model_artifact_path=MODEL_ARTIFACT_PATH,
+        model_sha256=model_actual_sha256,
+        checksum_validation="enabled" if MODEL_SHA256 else "not_configured",
+        artifact_manifest_status=model_metadata.get(
+            "artifact_manifest_status",
+            "not_validated",
+        ),
+        artifact_manifest_version=model_metadata.get(
+            "artifact_manifest_version",
+            "unknown",
+        ),
+        model_registry_enabled=str(USE_MODEL_REGISTRY).lower(),
+        registered_model_name=REGISTERED_MODEL_NAME,
+        model_alias=MODEL_ALIAS,
+    )
+
 
 @app.get("/metrics")
 def metrics() -> Response:
