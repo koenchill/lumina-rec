@@ -38,6 +38,8 @@ MODEL_DIR.mkdir(parents=True, exist_ok=True)
 ZIP_PATH = RAW_DIR / "ml-latest-small.zip"
 EXTRACTED_DIR = RAW_DIR / "ml-latest-small"
 
+LATEST_TRAINING_RUN_PATH = Path("reports/latest_training_run.json")
+
 MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI", "http://localhost:5000")
 MLFLOW_EXPERIMENT_NAME = os.getenv(
     "MLFLOW_EXPERIMENT_NAME",
@@ -48,6 +50,8 @@ EPOCHS = int(os.getenv("TRAINING_EPOCHS", "5"))
 BATCH_SIZE = int(os.getenv("TRAINING_BATCH_SIZE", "512"))
 EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "32"))
 LEARNING_RATE = float(os.getenv("LEARNING_RATE", "0.01"))
+MODEL_NAME = "lumina-rec-movielens-mf"
+MODEL_VERSION = "0.2.0"
 
 
 class MatrixFactorizationModel(nn.Module):
@@ -120,10 +124,10 @@ def prepare_data():
     )
 
     mapping_payload = {
-    "user_to_idx": {str(int(k)): int(v) for k, v in user_to_idx.items()},
-    "movie_to_idx": {str(int(k)): int(v) for k, v in movie_to_idx.items()},
-    "idx_to_movie": {str(int(k)): int(v) for k, v in idx_to_movie.items()},
-}
+        "user_to_idx": {str(int(k)): int(v) for k, v in user_to_idx.items()},
+        "movie_to_idx": {str(int(k)): int(v) for k, v in movie_to_idx.items()},
+        "idx_to_movie": {str(int(k)): int(v) for k, v in idx_to_movie.items()},
+    }
 
     mapping_path = MODEL_DIR / "movielens_mappings.json"
     mapping_path.write_text(json.dumps(mapping_payload, indent=2), encoding="utf-8")
@@ -132,13 +136,6 @@ def prepare_data():
     movies.to_csv(movie_metadata_path, index=False)
 
     return train_df, test_df, len(user_ids), len(movie_ids), mapping_path, movie_metadata_path
-
-    write_artifact_manifest(
-    artifact_dir=MODEL_DIR,
-    run_id=run.info.run_id,
-    model_name=MODEL_NAME,
-    model_version=MODEL_VERSION,
-)
 
 def build_loader(dataframe: pd.DataFrame, batch_size: int) -> DataLoader:
     user_tensor = torch.tensor(dataframe["user_idx"].values, dtype=torch.long)
@@ -168,7 +165,20 @@ def evaluate_model(model: nn.Module, dataframe: pd.DataFrame) -> tuple[float, fl
     rmse = mse**0.5
 
     return mse, rmse
+    def write_latest_training_run(run_id, model_sha256, test_rmse, model_name, model_version, artifact_path):
+        LATEST_TRAINING_RUN_PATH.parent.mkdir(parents=True, exist_ok=True)
+    data = {
+        "run_id": run_id,
+        "model_sha256": model_sha256,
+        "test_rmse": test_rmse,
+        "model_name": model_name,
+        "model_version": model_version,
+        "artifact_path": artifact_path,
+    }
+    LATEST_TRAINING_RUN_PATH.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
+
+def 
 
 def main() -> None:
     download_movielens()
@@ -266,6 +276,15 @@ def main() -> None:
         mlflow.log_artifact(str(metadata_path), artifact_path="approved_model")
         mlflow.log_artifact(str(mapping_path), artifact_path="approved_model")
         mlflow.log_artifact(str(movie_metadata_path), artifact_path="approved_model")
+
+        write_latest_training_run(
+        run_id=run.info.run_id,
+        model_sha256=model_sha256,
+        test_rmse=test_rmse,
+        model_name=MODEL_NAME,
+        model_version=MODEL_VERSION,
+        artifact_path="approved_model",
+)
 
         print("Training completed and logged to MLflow.")
         print(f"Run ID: {run_id}")
