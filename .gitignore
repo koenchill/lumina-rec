@@ -1,8 +1,44 @@
-﻿__pycache__/
+﻿# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+__pycache__/
 *.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Model artifacts
 ml/models/approved/
 ml/models/*.pt
+ml/models/*.pth
+ml/models/*.pkl
+ml/models/*.joblib
+
+# Data
+data/raw/*
+data/processed/*
+!data/raw/README.md
+!data/processed/README.md
+
+# Reports and generated outputs
 tests/load/load_test_report.html
-.pytest_cache/
-.env
-.venv/
+reports/generated/
+*.log
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
