@@ -5,7 +5,10 @@ WORKDIR /app
 COPY services/inference/requirements.txt services/inference/requirements.txt
 COPY ml/models/demo_model.pt ml/models/demo_model.pt
 COPY services/inference services/inference
+COPY services ./services
+COPY ml/validation ./ml/validation
 
+RUN touch ml/__init__.py ml/validation/__init__.py
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \

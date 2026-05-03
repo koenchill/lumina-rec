@@ -3,6 +3,11 @@ import json
 import logging
 import os
 from pathlib import Path
+import sys
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 from time import time
 from uuid import uuid4
 
@@ -21,6 +26,7 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
 from starlette.responses import JSONResponse
+from ml.validation.artifact_manifest import validate_artifact_manifest
 
 load_dotenv()
 
@@ -281,6 +287,14 @@ def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]
     movies_metadata = load_movies_metadata(movies_metadata_path)
     metadata["resolved_model_run_id"] = resolved_run_id
 
+    manifest = validate_artifact_manifest(
+    artifact_dir=artifact_dir,
+    expected_run_id=resolved_run_id,
+)
+
+    metadata["artifact_manifest_status"] = "validated"
+    metadata["artifact_manifest_version"] = manifest.get("manifest_version", "unknown")
+
     model_payload = torch.load(
         model_path,
         map_location="cpu",
@@ -309,6 +323,8 @@ def load_model() -> tuple[nn.Module, dict, dict, dict[int, dict[str, str]], str]
         registered_model_name=REGISTERED_MODEL_NAME,
         model_alias=MODEL_ALIAS,
         movie_metadata_count=len(movies_metadata),
+        artifact_manifest_status=metadata.get("artifact_manifest_status"),
+        artifact_manifest_version=metadata.get("artifact_manifest_version"),
     )
 
     return loaded_model, metadata, mappings, movies_metadata, actual_sha256
@@ -340,8 +356,9 @@ def ready() -> dict[str, str]:
         "model_alias": MODEL_ALIAS,
         "movie_metadata_status": "loaded",
         "movie_metadata_count": str(len(movies_metadata)),
+        "artifact_manifest_status": model_metadata.get("artifact_manifest_status", "not_validated"),
+        "artifact_manifest_version": model_metadata.get("artifact_manifest_version", "unknown"),
     }
-
 
 @app.get("/metrics")
 def metrics() -> Response:
