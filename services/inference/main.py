@@ -168,9 +168,31 @@ class ModelInfoResponse(BaseModel):
     model_alias: str
 
 
+class ErrorResponse(BaseModel):
+    error_code: str
+    detail: str
+    request_id: str | None = None
+
+
 def log_event(event_name: str, **fields) -> None:
     log_record = {"event": event_name, **fields}
     logger.info(json.dumps(log_record))
+
+
+def raise_api_error(
+    status_code: int,
+    error_code: str,
+    detail: str,
+    request_id: str | None = None,
+) -> None:
+    raise HTTPException(
+        status_code=status_code,
+        detail={
+            "error_code": error_code,
+            "detail": detail,
+            "request_id": request_id,
+        },
+    )
 
 
 def calculate_sha256(file_path: Path) -> str:
@@ -195,14 +217,32 @@ def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse
 
     return JSONResponse(
         status_code=429,
-        content={"detail": "Rate limit exceeded"},
+        content={
+            "detail": {
+                "error_code": "RATE_LIMIT_EXCEEDED",
+                "detail": "Rate limit exceeded",
+                "request_id": None,
+            }
+        },
     )
 
 
-def verify_api_key(x_api_key: str | None) -> None:
+def verify_api_key(
+    x_api_key: str | None,
+    request_id: str | None = None,
+) -> None:
     if not x_api_key or x_api_key != API_KEY:
-        log_event("authentication_failed", status="error")
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+        log_event(
+            "authentication_failed",
+            request_id=request_id,
+            status="error",
+        )
+        raise_api_error(
+            status_code=401,
+            error_code="AUTH_INVALID_API_KEY",
+            detail="Invalid or missing API key",
+            request_id=request_id,
+        )
 
 
 def resolve_model_run_id() -> str:
@@ -365,7 +405,11 @@ def health() -> dict[str, str]:
 @app.get("/ready")
 def ready() -> dict[str, str]:
     if model is None:
-        raise HTTPException(status_code=503, detail="Model is not loaded")
+        raise_api_error(
+            status_code=503,
+            error_code="MODEL_NOT_LOADED",
+            detail="Model is not loaded",
+        )
 
     return {
         "status": "ready",
@@ -434,8 +478,9 @@ def get_movie(movie_id: int) -> MovieMetadataResponse:
     metadata = movies_metadata.get(movie_id)
 
     if not metadata:
-        raise HTTPException(
+        raise_api_error(
             status_code=404,
+            error_code="UNKNOWN_MOVIE_ID",
             detail=f"Unknown movie_id: {movie_id}",
         )
 
@@ -457,7 +502,7 @@ def predict(
     start_time = time()
 
     try:
-        verify_api_key(x_api_key)
+        verify_api_key(x_api_key, request_id=request_id)
 
         user_key = str(prediction_request.user_id)
         movie_key = str(prediction_request.movie_id)
@@ -466,15 +511,19 @@ def predict(
         movie_to_idx = model_mappings["movie_to_idx"]
 
         if user_key not in user_to_idx:
-            raise HTTPException(
+            raise_api_error(
                 status_code=404,
+                error_code="UNKNOWN_USER_ID",
                 detail=f"Unknown user_id: {prediction_request.user_id}",
+                request_id=request_id,
             )
 
         if movie_key not in movie_to_idx:
-            raise HTTPException(
+            raise_api_error(
                 status_code=404,
+                error_code="UNKNOWN_MOVIE_ID",
                 detail=f"Unknown movie_id: {prediction_request.movie_id}",
+                request_id=request_id,
             )
 
         user_idx = torch.tensor([int(user_to_idx[user_key])], dtype=torch.long)
@@ -529,7 +578,12 @@ def predict(
             error=str(exc),
         )
 
-        raise HTTPException(status_code=500, detail="Prediction failed")
+        raise_api_error(
+            status_code=500,
+            error_code="PREDICTION_FAILED",
+            detail="Prediction failed",
+            request_id=request_id,
+        )
 
 
 @app.post("/recommend", response_model=RecommendationResponse)
@@ -543,7 +597,7 @@ def recommend(
     start_time = time()
 
     try:
-        verify_api_key(x_api_key)
+        verify_api_key(x_api_key, request_id=request_id)
 
         user_key = str(recommendation_request.user_id)
 
@@ -551,9 +605,11 @@ def recommend(
         idx_to_movie = model_mappings["idx_to_movie"]
 
         if user_key not in user_to_idx:
-            raise HTTPException(
+            raise_api_error(
                 status_code=404,
+                error_code="UNKNOWN_USER_ID",
                 detail=f"Unknown user_id: {recommendation_request.user_id}",
+                request_id=request_id,
             )
 
         user_idx_value = int(user_to_idx[user_key])
@@ -643,4 +699,9 @@ def recommend(
             error=str(exc),
         )
 
-        raise HTTPException(status_code=500, detail="Recommendation failed")
+        raise_api_error(
+            status_code=500,
+            error_code="RECOMMENDATION_FAILED",
+            detail="Recommendation failed",
+            request_id=request_id,
+        )

@@ -20,6 +20,20 @@ APPROVED_MODEL_ARTIFACT_PATH = APPROVED_MODEL_CONFIG["model_artifact_path"]
 APPROVED_MODEL_SHA256 = APPROVED_MODEL_CONFIG["model_sha256"]
 
 
+def assert_error_response(
+    body: dict,
+    error_code: str,
+    detail: str,
+    request_id_required: bool = False,
+) -> None:
+    assert "detail" in body
+    assert body["detail"]["error_code"] == error_code
+    assert body["detail"]["detail"] == detail
+
+    if request_id_required:
+        assert body["detail"]["request_id"]
+
+
 def test_health_endpoint():
     response = client.get("/health")
 
@@ -86,8 +100,14 @@ def test_movie_metadata_endpoint():
 
 def test_movie_metadata_rejects_unknown_movie_id():
     response = client.get("/movies/999999999")
+    body = response.json()
 
     assert response.status_code == 404
+    assert_error_response(
+        body=body,
+        error_code="UNKNOWN_MOVIE_ID",
+        detail="Unknown movie_id: 999999999",
+    )
 
 
 def test_predict_endpoint():
@@ -133,8 +153,15 @@ def test_predict_rejects_missing_api_key():
     payload = {"user_id": 1, "movie_id": 1}
 
     response = client.post("/predict", json=payload)
+    body = response.json()
 
     assert response.status_code == 401
+    assert_error_response(
+        body=body,
+        error_code="AUTH_INVALID_API_KEY",
+        detail="Invalid or missing API key",
+        request_id_required=True,
+    )
 
 
 def test_predict_rejects_bad_api_key():
@@ -145,8 +172,15 @@ def test_predict_rejects_bad_api_key():
         json=payload,
         headers={"x-api-key": "wrong-key"},
     )
+    body = response.json()
 
     assert response.status_code == 401
+    assert_error_response(
+        body=body,
+        error_code="AUTH_INVALID_API_KEY",
+        detail="Invalid or missing API key",
+        request_id_required=True,
+    )
 
 
 def test_predict_rejects_missing_required_field():
@@ -161,24 +195,45 @@ def test_predict_rejects_unknown_user_id():
     payload = {"user_id": 999999999, "movie_id": 1}
 
     response = client.post("/predict", json=payload, headers=API_HEADERS)
+    body = response.json()
 
     assert response.status_code == 404
+    assert_error_response(
+        body=body,
+        error_code="UNKNOWN_USER_ID",
+        detail="Unknown user_id: 999999999",
+        request_id_required=True,
+    )
 
 
 def test_predict_rejects_unknown_movie_id():
     payload = {"user_id": 1, "movie_id": 999999999}
 
     response = client.post("/predict", json=payload, headers=API_HEADERS)
+    body = response.json()
 
     assert response.status_code == 404
+    assert_error_response(
+        body=body,
+        error_code="UNKNOWN_MOVIE_ID",
+        detail="Unknown movie_id: 999999999",
+        request_id_required=True,
+    )
 
 
 def test_recommend_rejects_missing_api_key():
     payload = {"user_id": 1, "top_n": 10}
 
     response = client.post("/recommend", json=payload)
+    body = response.json()
 
     assert response.status_code == 401
+    assert_error_response(
+        body=body,
+        error_code="AUTH_INVALID_API_KEY",
+        detail="Invalid or missing API key",
+        request_id_required=True,
+    )
 
 
 def test_recommend_rejects_bad_api_key():
@@ -189,16 +244,30 @@ def test_recommend_rejects_bad_api_key():
         json=payload,
         headers={"x-api-key": "wrong-key"},
     )
+    body = response.json()
 
     assert response.status_code == 401
+    assert_error_response(
+        body=body,
+        error_code="AUTH_INVALID_API_KEY",
+        detail="Invalid or missing API key",
+        request_id_required=True,
+    )
 
 
 def test_recommend_rejects_unknown_user_id():
     payload = {"user_id": 999999999, "top_n": 10}
 
     response = client.post("/recommend", json=payload, headers=API_HEADERS)
+    body = response.json()
 
     assert response.status_code == 404
+    assert_error_response(
+        body=body,
+        error_code="UNKNOWN_USER_ID",
+        detail="Unknown user_id: 999999999",
+        request_id_required=True,
+    )
 
 
 def test_recommend_rejects_invalid_top_n():
