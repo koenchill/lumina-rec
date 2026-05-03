@@ -16,6 +16,40 @@ x-api-key: local-dev-api-key
   "top_n": 10
 }
 ```
+## Service Metadata Endpoints
+
+### GET /version
+
+```http
+GET /version
+```
+
+Example response:
+
+```json
+{
+  "service_name": "lumina-rec-inference",
+  "service_version": "0.2.0",
+  "model_name": "lumina-rec-movielens-mf",
+  "model_version": "0.2.0"
+}
+```
+
+### GET /model
+{
+  "model_name": "lumina-rec-movielens-mf",
+  "model_version": "0.2.0",
+  "model_run_id": "5248dddd8e97477da7651507b418d989",
+  "model_artifact_path": "approved_model",
+  "model_sha256": "79d2b50837a3af983530db10179e46ae7f26c7467d8fed31cc2f1fa9804cc97d",
+  "checksum_validation": "enabled",
+  "artifact_manifest_status": "validated",
+  "artifact_manifest_version": "1.0",
+  "model_registry_enabled": "true",
+  "registered_model_name": "lumina-rec-movielens-mf",
+  "model_alias": "approved"
+}
+```
 
 ### Request Rules
 
@@ -26,7 +60,6 @@ x-api-key: local-dev-api-key
 
 ### Success Response
 
-```json
 {
   "user_id": 1,
   "recommendations": [
@@ -48,7 +81,6 @@ x-api-key: local-dev-api-key
   "request_id": "example-request-id",
   "latency_ms": 3.83
 }
-```
 
 ### Recommendation Item Fields
 
@@ -59,6 +91,28 @@ x-api-key: local-dev-api-key
 | genres | string | Pipe separated MovieLens genres |
 | predicted_rating | float | Predicted rating for the recommended movie |
 | GET | /movies/{movie_id} | Returns title and genre metadata for one movie |
+
+## Structured Errors
+
+Known API errors return this shape:
+
+```json
+{
+  "detail": {
+    "error_code": "AUTH_INVALID_API_KEY",
+    "detail": "Invalid or missing API key",
+    "request_id": "example-request-id"
+  }
+}
+
+| Error Code | Status | Applies To |
+|---|---:|---|
+| AUTH_INVALID_API_KEY | 401 | `/predict`, `/recommend` |
+| UNKNOWN_USER_ID | 404 | `/predict`, `/recommend` |
+| UNKNOWN_MOVIE_ID | 404 | `/predict`, `/movies/{movie_id}` |
+| RATE_LIMIT_EXCEEDED | 429 | `/predict`, `/recommend` |
+| PREDICTION_FAILED | 500 | `/predict` |
+| RECOMMENDATION_FAILED | 500 | `/recommend` |
 
 ### Error Responses
 
