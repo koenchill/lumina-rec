@@ -1,0 +1,28 @@
+observability:
+  endpoints:
+    health: /health
+    readiness: /ready
+    metrics: /metrics
+
+  metrics:
+    - lumina_prediction_requests_total
+    - lumina_prediction_errors_total
+    - lumina_prediction_latency_ms
+    - lumina_rate_limit_errors_total
+
+  log_events:
+    - model_loaded
+    - prediction_completed
+    - prediction_failed
+    - recommendation_completed
+    - recommendation_failed
+    - authentication_failed
+    - rate_limit_exceeded
+    - model_checksum_failed
+
+  future_dashboards:
+    - api_health
+    - prediction_performance
+    - recommendation_performance
+    - security_events
+    - model_serving

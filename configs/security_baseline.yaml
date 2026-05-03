@@ -1,0 +1,26 @@
+security:
+  authentication:
+    local_method: api_key
+    protected_endpoints:
+      - /predict
+      - /recommend
+
+  validation:
+    request_schema_validation: true
+    unknown_user_returns_404: true
+    unknown_movie_returns_404: true
+    top_n_limit: 50
+
+  secrets:
+    env_file_committed: false
+    managed_secret_store_required_for_production: true
+
+  model_integrity:
+    sha256_validation: true
+    approved_artifact_loading: true
+
+  future_controls:
+    jwt_authentication: planned
+    api_gateway: planned
+    metrics_restriction: planned
+    artifact_signing: planned

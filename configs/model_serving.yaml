@@ -1,0 +1,17 @@
+model:
+  name: lumina-rec-movielens-mf
+  version: "0.2.0"
+  artifact_path: approved_model
+  registered_model_name: lumina-rec-movielens-mf
+  model_alias: approved
+
+serving:
+  prediction_endpoint: /predict
+  recommendation_endpoint: /recommend
+  movie_lookup_endpoint: /movies/{movie_id}
+  max_top_n: 50
+  default_top_n: 10
+
+integrity:
+  checksum_algorithm: sha256
+  checksum_required: true

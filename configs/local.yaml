@@ -1,0 +1,26 @@
+environment: local
+
+services:
+  inference:
+    url: http://localhost:8001
+  mlflow:
+    url: http://localhost:5000
+  minio:
+    api_url: http://localhost:9000
+    console_url: http://localhost:9001
+  postgres:
+    host_port: 5433
+  redis:
+    host_port: 6379
+  keycloak:
+    url: http://localhost:8082
+  localstack:
+    url: http://localhost:4566
+
+validation:
+  health_endpoint: /health
+  readiness_endpoint: /ready
+  metrics_endpoint: /metrics
+  prediction_endpoint: /predict
+  recommendation_endpoint: /recommend
+  movie_lookup_endpoint: /movies/1
