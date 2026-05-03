@@ -134,6 +134,8 @@ def test_recommend_endpoint():
 
     assert response.status_code == 200
     assert body["user_id"] == 1
+    assert body["top_n"] == 10
+    assert body["returned_count"] == 10
     assert len(body["recommendations"]) == 10
     assert body["model_name"] == APPROVED_MODEL_NAME
     assert body["model_version"] == APPROVED_MODEL_VERSION
@@ -141,6 +143,7 @@ def test_recommend_endpoint():
     assert "latency_ms" in body
 
     first_item = body["recommendations"][0]
+    assert first_item["rank"] == 1
     assert "movie_id" in first_item
     assert "title" in first_item
     assert "genres" in first_item

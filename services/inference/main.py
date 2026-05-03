@@ -126,6 +126,7 @@ class RecommendationRequest(BaseModel):
 
 
 class RecommendationItem(BaseModel):
+    rank: int
     movie_id: int
     title: str
     genres: str
@@ -134,6 +135,8 @@ class RecommendationItem(BaseModel):
 
 class RecommendationResponse(BaseModel):
     user_id: int
+    top_n: int
+    returned_count: int
     recommendations: list[RecommendationItem]
     model_name: str
     model_version: str
@@ -634,7 +637,7 @@ def recommend(
 
         recommendations = []
 
-        for movie_idx, score in top_items:
+        for rank, (movie_idx, score) in enumerate(top_items, start=1):
             movie_id = int(idx_to_movie[str(movie_idx)])
             metadata = movies_metadata.get(
                 movie_id,
@@ -646,6 +649,7 @@ def recommend(
 
             recommendations.append(
                 RecommendationItem(
+                    rank=rank,
                     movie_id=movie_id,
                     title=metadata["title"],
                     genres=metadata["genres"],
@@ -666,12 +670,15 @@ def recommend(
             model_run_id=get_resolved_model_run_id(),
             user_id=recommendation_request.user_id,
             top_n=recommendation_request.top_n,
+            returned_count=len(recommendations),
             latency_ms=latency_ms,
             status="success",
         )
 
         return RecommendationResponse(
             user_id=recommendation_request.user_id,
+            top_n=recommendation_request.top_n,
+            returned_count=len(recommendations),
             recommendations=recommendations,
             model_name=get_model_name(),
             model_version=get_model_version(),
