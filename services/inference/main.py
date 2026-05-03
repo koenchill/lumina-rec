@@ -123,6 +123,7 @@ class PredictionResponse(BaseModel):
 class RecommendationRequest(BaseModel):
     user_id: int = Field(..., description="MovieLens userId")
     top_n: int = Field(default=10, ge=1, le=50)
+    genre: str | None = Field(default=None, description="Optional MovieLens genre filter")
 
 
 class RecommendationItem(BaseModel):
@@ -137,6 +138,7 @@ class RecommendationResponse(BaseModel):
     user_id: int
     top_n: int
     returned_count: int
+    genre: str | None = None
     recommendations: list[RecommendationItem]
     model_name: str
     model_version: str
@@ -633,11 +635,9 @@ def recommend(
             reverse=True,
         )
 
-        top_items = ranked[: recommendation_request.top_n]
+        filtered_items = []
 
-        recommendations = []
-
-        for rank, (movie_idx, score) in enumerate(top_items, start=1):
+        for movie_idx, score in ranked:
             movie_id = int(idx_to_movie[str(movie_idx)])
             metadata = movies_metadata.get(
                 movie_id,
@@ -646,6 +646,23 @@ def recommend(
                     "genres": "Unknown",
                 },
             )
+
+            if recommendation_request.genre:
+                requested_genre = recommendation_request.genre.lower()
+                movie_genres = metadata["genres"].lower().split("|")
+
+                if requested_genre not in movie_genres:
+                    continue
+
+            filtered_items.append((movie_idx, score, metadata))
+
+            if len(filtered_items) == recommendation_request.top_n:
+                break
+
+        recommendations = []
+
+        for rank, (movie_idx, score, metadata) in enumerate(filtered_items, start=1):
+            movie_id = int(idx_to_movie[str(movie_idx)])
 
             recommendations.append(
                 RecommendationItem(
@@ -671,6 +688,7 @@ def recommend(
             user_id=recommendation_request.user_id,
             top_n=recommendation_request.top_n,
             returned_count=len(recommendations),
+            genre=recommendation_request.genre,
             latency_ms=latency_ms,
             status="success",
         )
@@ -679,6 +697,7 @@ def recommend(
             user_id=recommendation_request.user_id,
             top_n=recommendation_request.top_n,
             returned_count=len(recommendations),
+            genre=recommendation_request.genre,
             recommendations=recommendations,
             model_name=get_model_name(),
             model_version=get_model_version(),

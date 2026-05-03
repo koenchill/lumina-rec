@@ -136,6 +136,7 @@ def test_recommend_endpoint():
     assert body["user_id"] == 1
     assert body["top_n"] == 10
     assert body["returned_count"] == 10
+    assert body["genre"] is None
     assert len(body["recommendations"]) == 10
     assert body["model_name"] == APPROVED_MODEL_NAME
     assert body["model_version"] == APPROVED_MODEL_VERSION
@@ -150,6 +151,23 @@ def test_recommend_endpoint():
     assert "predicted_rating" in first_item
     assert first_item["title"] != ""
     assert first_item["genres"] != ""
+
+
+def test_recommend_endpoint_with_genre_filter():
+    payload = {"user_id": 1, "top_n": 5, "genre": "Comedy"}
+
+    response = client.post("/recommend", json=payload, headers=API_HEADERS)
+    body = response.json()
+
+    assert response.status_code == 200
+    assert body["user_id"] == 1
+    assert body["top_n"] == 5
+    assert body["genre"] == "Comedy"
+    assert body["returned_count"] <= 5
+    assert len(body["recommendations"]) == body["returned_count"]
+
+    for item in body["recommendations"]:
+        assert "Comedy" in item["genres"].split("|")
 
 
 def test_predict_rejects_missing_api_key():
