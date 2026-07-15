@@ -19,5 +19,24 @@ This document defines the normal local development workflow for Lumina Rec.
 ### Start services
 
 ```powershell
-docker compose up -d postgres minio mlflow
-docker compose up -d --build inference
+.\scripts\lumina.ps1 up
+# equivalent: docker compose up -d --build
+```
+
+Optional placeholders:
+
+```powershell
+docker compose --profile extras up -d
+```
+
+If inference cannot load the pinned model run, train into local MLflow and update
+`.env` from `reports/latest_training_run.json`, then recreate inference.
+
+### Validate
+
+```powershell
+.\scripts\lumina.ps1 ready
+.\scripts\lumina.ps1 predict
+.\scripts\lumina.ps1 recommend
+.\scripts\lumina.ps1 test
+```

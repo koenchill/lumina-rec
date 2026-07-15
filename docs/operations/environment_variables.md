@@ -38,44 +38,32 @@ Inside Docker Compose, the inference service uses service names, not localhost.
 
 ## Approved Model Selection
 
-| Variable | Current Approved Value | Purpose |
+Compose requires `MODEL_RUN_ID` and `MODEL_SHA256`. They must exist in the **current**
+local MLflow/MinIO data. After a fresh stack, train and copy values from
+`reports/latest_training_run.json`.
+
+| Variable | Example / Source | Purpose |
 |---|---|---|
-| MODEL_RUN_ID | 14eda4cf03bd4d328a3ee791ec9a002f | MLflow run ID for approved artifacts |
+| MODEL_RUN_ID | from `reports/latest_training_run.json` | MLflow run ID for approved artifacts |
 | MODEL_ARTIFACT_PATH | approved_model | Artifact folder in the MLflow run |
-| MODEL_SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd | Approved model checksum |
+| MODEL_SHA256 | from `reports/latest_training_run.json` | Approved model checksum |
 | APPROVED_MODEL_DIR | ml/models/approved | Local artifact download cache |
 
-## Current Local `.env` Template
-
-```env
-AWS_ACCESS_KEY_ID=minio
-AWS_SECRET_ACCESS_KEY=minio123
-MLFLOW_S3_ENDPOINT_URL=http://localhost:9000
-MLFLOW_TRACKING_URI=http://localhost:5000
-MLFLOW_EXPERIMENT_NAME=lumina-rec-recommender
-
-LUMINA_API_KEY=local-dev-api-key
-LUMINA_RATE_LIMIT=300/minute
-
-MODEL_RUN_ID=14eda4cf03bd4d328a3ee791ec9a002f
-MODEL_SHA256=205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
-MODEL_ARTIFACT_PATH=approved_model
-```
+See `.env.example` for the full local template.
 
 ## Runtime Validation
 
-Confirm Docker Compose sees the approved model values:
+Confirm Docker Compose sees the model pin values from `.env`:
 
 ```powershell
 docker compose config | Select-String "MODEL_RUN_ID|MODEL_SHA256|MODEL_ARTIFACT_PATH"
 ```
 
-Expected result:
+Shell environment variables override `.env`. Clear accidental overrides before compose:
 
-```text
-MODEL_RUN_ID: 14eda4cf03bd4d328a3ee791ec9a002f
-MODEL_SHA256: 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
-MODEL_ARTIFACT_PATH: approved_model
+```powershell
+Remove-Item Env:MODEL_RUN_ID -ErrorAction SilentlyContinue
+Remove-Item Env:MODEL_SHA256 -ErrorAction SilentlyContinue
 ```
 
 ## Safety Rules

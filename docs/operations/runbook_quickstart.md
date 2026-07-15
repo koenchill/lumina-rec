@@ -4,74 +4,67 @@
 
 This file gives the shortest path to run and validate Lumina Rec locally.
 
-## Current Approved Model
+## Prerequisites
 
-| Field | Value |
-|---|---|
-| Model name | lumina-rec-movielens-mf |
-| Model version | 0.2.0 |
-| MLflow run ID | 14eda4cf03bd4d328a3ee791ec9a002f |
-| Artifact path | approved_model |
-| Model SHA256 | 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd |
-| Test RMSE | 2.0162 |
+1. Docker Desktop is running.
+2. `.env` exists (copy from `.env.example` if needed).
+3. `MODEL_RUN_ID` and `MODEL_SHA256` in `.env` point at a run that exists in **this**
+   local MLflow/MinIO stack.
 
-## Start Required Services
+## Start Core Stack
 
 ```powershell
-docker compose up -d postgres minio mlflow
+.\scripts\lumina.ps1 up
 ```
 
-## Confirm MLflow
+This starts postgres, minio, minio-init (creates `mlflow-artifacts`), mlflow, and
+inference. Optional placeholders (redis, keycloak, localstack) stay off unless you use:
 
 ```powershell
-Invoke-WebRequest -Uri http://localhost:5000 -UseBasicParsing
+docker compose --profile extras up -d
 ```
 
-Expected result:
+## Confirm Services
+
+```powershell
+docker compose ps
+```
+
+Core services should be healthy (minio-init exits 0 after creating the bucket).
+
+## If Inference Is Unhealthy
+
+Missing MLflow run (common after a fresh compose volume):
 
 ```text
-StatusCode : 200
+RESOURCE_DOES_NOT_EXIST: Run with id=... not found
 ```
 
-## Confirm MinIO Bucket
+Train and re-pin:
 
 ```powershell
-docker compose exec minio mc ls local
+$env:PYTHONPATH = "src;."
+.\.venv\Scripts\python.exe .\ml\training\train.py
 ```
 
-Expected bucket:
-
-```text
-mlflow-artifacts
-```
-
-## Confirm Model Runtime Values
+Update `.env` from `reports/latest_training_run.json` (`model_run_id`, `model_sha256`),
+then:
 
 ```powershell
-docker compose config | Select-String "MODEL_RUN_ID|MODEL_SHA256|MODEL_ARTIFACT_PATH"
+docker compose up -d --force-recreate inference
+.\scripts\lumina.ps1 ready
 ```
 
-Expected values:
-
-```text
-MODEL_RUN_ID: 14eda4cf03bd4d328a3ee791ec9a002f
-MODEL_SHA256: 205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
-MODEL_ARTIFACT_PATH: approved_model
-```
-
-## Start Inference
+Also clear accidental shell overrides:
 
 ```powershell
-docker compose up -d --build inference
+Remove-Item Env:MODEL_RUN_ID -ErrorAction SilentlyContinue
+Remove-Item Env:MODEL_SHA256 -ErrorAction SilentlyContinue
 ```
 
 ## Validate API
 
 ```powershell
-.\scripts\lumina.ps1 ready
-.\scripts\lumina.ps1 predict
-.\scripts\lumina.ps1 recommend
-.\scripts\lumina.ps1 movie
 .\scripts\lumina.ps1 ready
 .\scripts\lumina.ps1 predict
 .\scripts\lumina.ps1 recommend
@@ -103,6 +96,7 @@ movie_id
 title
 genres
 ```
+
 ## Expected Movie Lookup Response Fields
 
 ```text
@@ -131,20 +125,10 @@ If inference does not become ready, check logs:
 docker compose logs inference --tail=120
 ```
 
-If logs show an old or missing run ID, update `.env`:
-
-```env
-MODEL_RUN_ID=14eda4cf03bd4d328a3ee791ec9a002f
-MODEL_SHA256=205de2403fdd84e1826dbde3e2f52470e36198d7c4f4953a5e0118e3040b14cd
-MODEL_ARTIFACT_PATH=approved_model
-```
-
-Then restart inference:
+Then restart inference after fixing `.env`:
 
 ```powershell
-docker compose stop inference
-docker compose rm -f inference
-docker compose up -d --build inference
+docker compose up -d --force-recreate inference
 ```
 
 ## Do Not Commit

@@ -44,12 +44,19 @@ Lumina Rec currently supports:
 
 ## Local Services
 
+Core stack (`docker compose up` / `.\scripts\lumina.ps1 up`):
+
 | Service | Purpose | Local URL |
 |---|---|---|
 | Inference API | Serves predictions, recommendations, and movie metadata | http://localhost:8001 |
 | MLflow | Tracks experiments and approved artifacts | http://localhost:5000 |
 | MinIO | Stores MLflow artifacts | http://localhost:9001 |
 | Postgres | Stores MLflow metadata | localhost:5433 |
+
+Optional placeholders (`docker compose --profile extras up -d`):
+
+| Service | Purpose | Local URL |
+|---|---|---|
 | Redis | Future cache placeholder | localhost:6379 |
 | Keycloak | Future identity provider placeholder | http://localhost:8082 |
 | LocalStack | Future AWS local development placeholder | http://localhost:4566 |

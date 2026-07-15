@@ -12,12 +12,19 @@ The core services are:
 - mlflow
 - postgres
 - minio
+- minio-init (one-shot bucket bootstrap)
 
-Optional local services are:
+Optional local services (Compose profile `extras`) are:
 
 - redis
 - keycloak
 - localstack
+
+Start optional services with:
+
+```powershell
+docker compose --profile extras up -d
+```
 
 ## Safe Cleanup
 
