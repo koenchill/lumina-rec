@@ -12,13 +12,19 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+*.egg-info/
+dist/
+build/
 
-# Model artifacts
+# Model artifacts (generated locally; MLflow is source of truth)
 ml/models/approved/
 ml/models/*.pt
 ml/models/*.pth
 ml/models/*.pkl
 ml/models/*.joblib
+ml/models/*.json
+ml/models/*.csv
+!ml/models/README.md
 
 # Data
 data/raw/*
@@ -29,6 +35,7 @@ data/processed/*
 # Reports and generated outputs
 tests/load/load_test_report.html
 reports/generated/
+reports/latest_training_run.json
 *.log
 
 # OS and editor
