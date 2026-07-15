@@ -1,38 +1,29 @@
 # Inference Service
 
-## Purpose
+FastAPI service that loads the approved MovieLens model from MLflow and serves predictions.
 
-This service hosts the Lumina Rec FastAPI inference API.
+## Layout
 
-## Endpoints
+```text
+services/inference/
+├── app/
+│   ├── main.py           # FastAPI routes
+│   ├── config.py         # Env-driven settings
+│   ├── schemas.py        # Pydantic models
+│   ├── auth.py           # API key helpers
+│   ├── loading.py        # MLflow download + checksum
+│   ├── metrics.py        # Prometheus counters
+│   └── logging_utils.py  # Structured JSON logs
+├── main.py               # Compatibility re-export of app
+├── Dockerfile
+├── requirements.txt
+└── README.md
+```
 
-| Endpoint | Purpose |
-|---|---|
-| GET /health | Health check |
-| GET /ready | Model readiness check |
-| GET /metrics | Prometheus metrics |
-| GET /movies/{movie_id} | Movie metadata lookup |
-| POST /predict | Predict rating for one user and movie |
-| POST /recommend | Return top N recommendations |
+## Entrypoint
 
-## Runtime Dependencies
+```text
+uvicorn services.inference.app.main:app --host 0.0.0.0 --port 8000
+```
 
-The service loads approved model artifacts from MLflow.
-
-Required artifacts:
-
-| Artifact | Purpose |
-|---|---|
-| recommender_model.pt | PyTorch model |
-| model_metadata.json | Model metadata |
-| movielens_mappings.json | User and movie mappings |
-| movies_metadata.csv | Movie title and genre metadata |
-
-## Local Validation
-
-```powershell
-.\scripts\lumina.ps1 ready
-.\scripts\lumina.ps1 predict
-.\scripts\lumina.ps1 recommend
-.\scripts\lumina.ps1 movie
-.\scripts\lumina.ps1 test
+Shared model and validation code lives in `src/lumina_rec/`.

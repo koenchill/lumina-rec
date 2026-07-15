@@ -1,0 +1,1 @@
+"""Lumina Rec inference service."""

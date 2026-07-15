@@ -2,13 +2,13 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-COPY services/inference/requirements.txt services/inference/requirements.txt
-COPY ml/models/demo_model.pt ml/models/demo_model.pt
-COPY services/inference services/inference
-COPY services ./services
-COPY ml/validation ./ml/validation
+ENV PYTHONPATH=/app/src:/app
 
-RUN touch ml/__init__.py ml/validation/__init__.py
+COPY services/inference/requirements.txt services/inference/requirements.txt
+COPY src ./src
+COPY services ./services
+COPY ml/training ./ml/training
+
 RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir \
         --index-url https://download.pytorch.org/whl/cpu \
@@ -18,4 +18,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 EXPOSE 8000
 
-CMD ["uvicorn", "services.inference.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]
+CMD ["uvicorn", "services.inference.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]
