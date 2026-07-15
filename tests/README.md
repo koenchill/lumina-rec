@@ -2,31 +2,27 @@
 
 ## Purpose
 
-This folder stores validation tests for Lumina Rec.
+Validation tests for Lumina Rec.
 
-## Test Areas
+## Layout
 
 | Folder | Purpose |
 |---|---|
-| tests/inference | FastAPI endpoint tests |
-| tests/load | Locust load tests |
-
-## Current API Test Coverage
-
-The API tests validate:
-
-- `/health`
-- `/ready`
-- `/movies/{movie_id}`
-- `/predict`
-- `/recommend`
-- `/metrics`
-- authentication failures
-- validation failures
-- unknown user handling
-- unknown movie handling
+| `tests/unit/` | Shared library tests (evaluation, validation, registry) |
+| `tests/inference/` | FastAPI endpoint tests |
+| `tests/load/` | Locust load tests |
 
 ## Run Tests
 
 ```powershell
 .\scripts\lumina.ps1 test
+```
+
+Or directly:
+
+```powershell
+pytest tests/unit -q
+pytest tests/inference/test_api.py
+```
+
+Inference API tests require the approved model to load (local MLflow stack or cached artifacts under `ml/models/approved/`).

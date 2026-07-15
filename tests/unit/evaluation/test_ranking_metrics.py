@@ -1,6 +1,6 @@
 import pytest
 
-from ml.evaluation.ranking_metrics import (
+from lumina_rec.evaluation.ranking_metrics import (
     catalog_coverage,
     dcg_at_k,
     ndcg_at_k,

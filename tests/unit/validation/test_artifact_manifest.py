@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from ml.validation.artifact_manifest import (
+from lumina_rec.validation.artifact_manifest import (
     build_artifact_manifest,
     calculate_sha256,
     validate_artifact_manifest,

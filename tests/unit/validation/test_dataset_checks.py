@@ -3,7 +3,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from ml.validation.dataset_checks import (
+from lumina_rec.validation.dataset_checks import (
     build_validation_summary,
     validate_columns,
     validate_missing_values,

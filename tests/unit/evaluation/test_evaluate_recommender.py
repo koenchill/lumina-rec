@@ -2,7 +2,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from ml.evaluation.evaluate_recommender import (
+from lumina_rec.evaluation.evaluate_recommender import (
     build_relevant_items_by_user,
     evaluate_ranking_metrics,
 )

@@ -65,18 +65,20 @@ switch ($Task) {
     }
 
     "train" {
+        $env:PYTHONPATH = "src;."
         python .\ml\training\train.py
     }
 
     "validate-data" {
-        python .\ml\validation\dataset_checks.py
+        $env:PYTHONPATH = "src;."
+        python -m lumina_rec.validation.dataset_checks
     }
 
     "test" {
-        pytest
-            .\tests\inference\test_api.py `
-            .\tests\validation\test_dataset_checks.py `
-            .\tests\validation\test_artifact_manifest.py
+        $env:PYTHONPATH = "src;."
+        pytest `
+            .\tests\unit `
+            .\tests\inference\test_api.py
     }
 
     "build-inference" {
