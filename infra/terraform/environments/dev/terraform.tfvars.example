@@ -1,0 +1,22 @@
+kube_context = "docker-desktop"
+namespace    = "lumina-rec"
+
+inference_image = "lumina-rec-inference:latest"
+replicas        = 1
+
+mlflow_tracking_uri    = "http://host.docker.internal:5000"
+mlflow_s3_endpoint_url = "http://host.docker.internal:9000"
+aws_access_key_id      = "minio"
+aws_secret_access_key  = "minio123"
+
+lumina_api_key    = "local-dev-api-key"
+lumina_rate_limit = "300/minute"
+
+# Copy from repo-root .env / reports/latest_training_run.json
+model_run_id        = "replace_with_mlflow_run_id"
+model_sha256        = "replace_with_approved_model_sha256"
+model_artifact_path = "approved_model"
+
+registered_model_name = "lumina-rec-movielens-mf"
+model_alias           = "approved"
+use_model_registry    = false
