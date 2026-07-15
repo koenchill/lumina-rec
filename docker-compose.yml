@@ -6,26 +6,38 @@
     ports:
       - "8001:8000"
     depends_on:
-      - mlflow
+      mlflow:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     environment:
       MLFLOW_TRACKING_URI: http://mlflow:5000
       MLFLOW_S3_ENDPOINT_URL: http://minio:9000
       AWS_ACCESS_KEY_ID: minio
       AWS_SECRET_ACCESS_KEY: minio123
-      LUMINA_API_KEY: local-dev-api-key
-      LUMINA_RATE_LIMIT: 300/minute
-      MODEL_RUN_ID: ${MODEL_RUN_ID:-}
+      LUMINA_API_KEY: ${LUMINA_API_KEY:-local-dev-api-key}
+      LUMINA_RATE_LIMIT: ${LUMINA_RATE_LIMIT:-300/minute}
+      MODEL_RUN_ID: ${MODEL_RUN_ID:?Set MODEL_RUN_ID in .env}
       MODEL_ARTIFACT_PATH: ${MODEL_ARTIFACT_PATH:-approved_model}
-      MODEL_SHA256: ${MODEL_SHA256:-}
+      MODEL_SHA256: ${MODEL_SHA256:?Set MODEL_SHA256 in .env}
       PYTHONPATH: /app/src:/app
-
-  localstack:
-    image: localstack/localstack:3.0
-    ports:
-      - "4566:4566"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+    restart: unless-stopped
 
   minio:
-    image: minio/minio
+    # Quay is MinIO's primary registry and avoids Docker Hub CDN flake.
+    image: quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z
     command: server /data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -33,37 +45,58 @@
     environment:
       MINIO_ROOT_USER: minio
       MINIO_ROOT_PASSWORD: minio123
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+  minio-init:
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        until mc alias set local http://minio:9000 minio minio123; do
+          echo "waiting for minio..."
+          sleep 2
+        done
+        mc mb --ignore-existing local/mlflow-artifacts
+    restart: "no"
 
   postgres:
-    image: postgres:16
+    # Google's Docker Hub pull-through mirror (avoids docker.com CloudFront flake).
+    image: mirror.gcr.io/library/postgres:16
     environment:
       POSTGRES_DB: lumina
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
-
-  redis:
-    image: redis:7
-    ports:
-      - "6379:6379"
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:latest
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - "8082:8080"
-    command: start-dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lumina"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
 
   mlflow:
     image: ghcr.io/mlflow/mlflow:v2.12.2
     ports:
       - "5000:5000"
     depends_on:
-      - postgres
-      - minio
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
     environment:
       AWS_ACCESS_KEY_ID: minio
       AWS_SECRET_ACCESS_KEY: minio123
@@ -74,9 +107,45 @@
       - /bin/sh
       - -c
       - |
-        pip install psycopg2-binary boto3 &&
+        pip install --no-cache-dir psycopg2-binary boto3 &&
         mlflow server \
           --host 0.0.0.0 \
           --port 5000 \
           --backend-store-uri postgresql://postgres:postgres@postgres:5432/lumina \
           --default-artifact-root s3://mlflow-artifacts
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 18
+      start_period: 90s
+    restart: unless-stopped
+
+  # Optional placeholders: docker compose --profile extras up -d
+  localstack:
+    profiles: ["extras"]
+    image: localstack/localstack:3.0
+    ports:
+      - "4566:4566"
+
+  redis:
+    profiles: ["extras"]
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  keycloak:
+    profiles: ["extras"]
+    image: quay.io/keycloak/keycloak:26.0
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8082:8080"
+    command: start-dev

@@ -18,4 +18,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 EXPOSE 8000
 
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=10 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"
+
 CMD ["uvicorn", "services.inference.app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--timeout-keep-alive", "30"]

@@ -49,6 +49,9 @@ function Wait-ForInferenceApi {
 switch ($Task) {
     "up" {
         docker compose up -d --build
+        if ($LASTEXITCODE -ne 0) {
+            throw "docker compose up failed with exit code $LASTEXITCODE. Fix image pulls/logs before retrying."
+        }
         Wait-ForInferenceApi
     }
 
