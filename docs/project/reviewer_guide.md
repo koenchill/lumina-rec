@@ -44,14 +44,14 @@ Read these files first:
 | File | Why It Matters |
 |---|---|
 | README.md | Project overview and common commands |
-| docs/architecture.md | Architecture diagram and service flow |
-| docs/api_contract.md | API endpoints and expected responses |
-| docs/recommendation_api.md | Prediction and recommendation API details |
-| docs/model_card.md | Approved model details and limitations |
-| docs/model_promotion_record.md | Promotion decision and approved run |
-| docs/local_validation.md | Evidence the stack works |
-| docs/security_controls.md | Implemented controls and risk reduction |
-| docs/threat_model.md | Security risks and planned controls |
+| [docs/architecture/architecture.md](../architecture/architecture.md) | Architecture diagram and service flow |
+| [docs/api/api_contract.md](../api/api_contract.md) | API endpoints and expected responses |
+| [docs/api/recommendation_api.md](../api/recommendation_api.md) | Prediction and recommendation API details |
+| [docs/mlops/model_card.md](../mlops/model_card.md) | Approved model details and limitations |
+| [docs/mlops/model_promotion_record.md](../mlops/model_promotion_record.md) | Promotion decision and approved run |
+| [docs/operations/local_validation.md](../operations/local_validation.md) | Evidence the stack works |
+| [docs/security/security_controls.md](../security/security_controls.md) | Implemented controls and risk reduction |
+| [docs/security/threat_model.md](../security/threat_model.md) | Security risks and planned controls |
 
 ## Quick Validation
 

@@ -21,4 +21,6 @@ Feast.
 
 Placeholder only.
 
+Feast config stub: `feature-store/feature_store.yaml`.
+
 The current inference service loads model mappings and movie metadata from MLflow artifacts.

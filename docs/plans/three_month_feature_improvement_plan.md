@@ -26,7 +26,7 @@ Objective: Prevent bad training runs from entering MLflow.
 
 Build:
 
-- Wire `ml/validation/dataset_checks.py` into the project runner
+- Wire `src/lumina_rec/validation/dataset_checks.py` into the project runner
 - Add `.\scripts\lumina.ps1 validate-data`
 - Validate `ratings.csv` and `movies.csv`
 - Validate required columns
@@ -37,9 +37,9 @@ Build:
 
 Files:
 
-- `ml/validation/dataset_checks.py`
+- `src/lumina_rec/validation/dataset_checks.py`
 - `scripts/lumina.ps1`
-- `tests/validation/test_dataset_checks.py`
+- `tests/unit/validation/test_dataset_checks.py`
 - `reports/dataset_validation_report.md`
 - `docs/dataset_validation_plan.md`
 
@@ -65,8 +65,8 @@ Files:
 
 - `ml/training/train.py`
 - `services/inference/main.py`
-- `ml/validation/artifact_manifest.py`
-- `tests/validation/test_artifact_manifest.py`
+- `src/lumina_rec/validation/artifact_manifest.py`
+- `tests/unit/validation/test_artifact_manifest.py`
 - `docs/artifact_manifest_plan.md`
 
 Acceptance criteria:
@@ -81,7 +81,7 @@ Objective: Remove hard dependency on manually setting `MODEL_RUN_ID`.
 
 Build:
 
-- Complete `ml/registry/register_model.py`
+- Complete `src/lumina_rec/registry/register_model.py`
 - Register approved model as `lumina-rec-movielens-mf`
 - Assign alias `approved`
 - Add inference support for `USE_MODEL_REGISTRY=true`
@@ -90,8 +90,8 @@ Build:
 
 Files:
 
-- `ml/registry/register_model.py`
-- `ml/registry/resolve_model.py`
+- `src/lumina_rec/registry/register_model.py`
+- `src/lumina_rec/registry/resolve_model.py`
 - `services/inference/main.py`
 - `scripts/lumina.ps1`
 - `.env.example`
@@ -139,9 +139,9 @@ Build:
 
 Files:
 
-- `ml/evaluation/ranking_metrics.py`
-- `ml/evaluation/evaluate_recommender.py`
-- `tests/evaluation/test_ranking_metrics.py`
+- `src/lumina_rec/evaluation/ranking_metrics.py`
+- `src/lumina_rec/evaluation/evaluate_recommender.py`
+- `tests/unit/evaluation/test_ranking_metrics.py`
 - `reports/templates/recommendation_quality_report.md`
 
 Acceptance criteria:
