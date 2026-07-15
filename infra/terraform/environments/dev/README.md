@@ -2,29 +2,16 @@
 
 ## Purpose
 
-This folder will hold future Terraform configuration for the development environment.
+Terraform root module for the local/dev Lumina Rec inference stack.
 
-## Planned Inputs
+## Usage
 
-| Input | Purpose |
-|---|---|
-| environment_name | Environment label |
-| region | Cloud region |
-| inference_image | Container image URI |
-| model_registry_name | Approved model registry name |
-| model_alias | Approved model alias |
-| api_domain | API DNS name |
-| log_retention_days | Log retention policy |
+From repo root:
 
-## Planned Outputs
+```powershell
+.\scripts\terraform.ps1 write-tfvars
+.\scripts\terraform.ps1 init
+.\scripts\terraform.ps1 apply
+```
 
-| Output | Purpose |
-|---|---|
-| inference_url | API endpoint |
-| metrics_url | Internal metrics endpoint |
-| artifact_bucket | Model artifact storage |
-| registry_name | Model registry reference |
-
-## Current Status
-
-Placeholder only.
+See [`../../README.md`](../../README.md) for prerequisites and validation.

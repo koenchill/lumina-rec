@@ -6,13 +6,14 @@ This document outlines the future production deployment path for Lumina Rec.
 
 ## Current State
 
-Lumina Rec runs locally with Docker Compose.
+Lumina Rec runs locally with Docker Compose for MLflow/MinIO/Postgres, optional
+Compose inference, plus Kubernetes inference managed by local Terraform.
 
 Current local services:
 
 | Service | Purpose |
 |---|---|
-| inference | FastAPI inference API |
+| inference | FastAPI inference API (Compose `:8001` and/or Kubernetes `:8002`) |
 | mlflow | MLflow tracking server |
 | minio | Artifact storage |
 | postgres | MLflow metadata store |
@@ -43,7 +44,7 @@ Current local services:
 
 ## Future Infrastructure Tasks
 
-1. Add Terraform skeleton.
+1. Add cloud Terraform environments (beyond local Kubernetes provider).
 2. Add container registry workflow.
 3. Add environment specific configuration.
 4. Add production secret manager pattern.

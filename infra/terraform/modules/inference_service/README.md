@@ -2,29 +2,26 @@
 
 ## Purpose
 
-This future module will deploy the Lumina Rec inference API.
+Deploys the Lumina Rec inference API to Kubernetes.
 
-## Planned Responsibilities
+## Responsibilities
 
-- Deploy containerized FastAPI service
-- Configure environment variables
-- Connect to model artifact storage
-- Connect to model registry
-- Configure health checks
-- Configure autoscaling
-- Configure logging
-- Restrict network access
+- Create namespace (optional)
+- Create inference Secret and ConfigMap
+- Deploy FastAPI container with health/readiness probes
+- Expose ClusterIP Service
 
-## Required Runtime Values
+## Required inputs
 
 | Variable | Purpose |
 |---|---|
-| MODEL_ARTIFACT_PATH | Approved artifact folder |
-| REGISTERED_MODEL_NAME | Registered model name |
-| MODEL_ALIAS | Approved model alias |
-| LUMINA_API_KEY | API authentication key |
-| LUMINA_RATE_LIMIT | Rate limit setting |
+| `namespace` | Target namespace |
+| `image` | Inference image |
+| `mlflow_tracking_uri` | MLflow URL from the pod |
+| `mlflow_s3_endpoint_url` | MinIO/S3 endpoint from the pod |
+| `model_run_id` / `model_sha256` | Approved model pin |
+| `lumina_api_key` | API authentication key |
 
-## Current Status
+## Current status
 
-Placeholder only.
+Implemented for local Docker Desktop Kubernetes + Compose artifact stack.

@@ -28,6 +28,8 @@ Lumina Rec currently supports:
 - Pytest API tests
 - Locust load testing
 - Docker Compose local orchestration
+- Local Kubernetes inference (Docker Desktop)
+- Local Terraform (Kubernetes provider) for inference IaC
 
 ## Current Approved Model
 
@@ -72,6 +74,18 @@ Optional placeholders (`docker compose --profile extras up -d`):
 .\scripts\lumina.ps1 test
 .\scripts\lumina.ps1 load-test
 ```
+
+### Kubernetes / Terraform (local inference)
+
+Compose keeps MLflow/MinIO/Postgres; Kubernetes serves inference on port-forward `:8002`.
+Prefer Terraform for the K8s workload:
+
+```powershell
+.\scripts\terraform.ps1 apply
+kubectl -n lumina-rec port-forward svc/inference 8002:8000
+```
+
+See [`infra/README.md`](infra/README.md).
 
 ## API Examples
 

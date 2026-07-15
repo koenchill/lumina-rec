@@ -9,3 +9,4 @@
 | [security/](security/) | Security reviewers | Threats, controls, access |
 | [plans/](plans/) | Planners | Future work (not current truth) |
 | [project/](project/) | Stakeholders | Status, handoff, roadmap |
+| [../infra/](../infra/) | Platform / infra | Docker Compose, Kubernetes, Terraform |

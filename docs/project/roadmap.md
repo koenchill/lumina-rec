@@ -49,9 +49,15 @@ Planned:
 
 ## Phase 4, Production Readiness
 
-Status: Planned
+Status: In progress (local packaging done; cloud production still planned)
 
-Planned:
+Delivered locally:
+
+- Hardened Docker Compose stack
+- Kubernetes inference on Docker Desktop
+- Terraform local/dev module for inference (`infra/terraform`)
+
+Still planned for cloud production:
 
 - API gateway authentication
 - Managed secrets
@@ -59,5 +65,4 @@ Planned:
 - Restricted metrics
 - Centralized logs
 - Grafana dashboards
-- Production deployment guide
-- Terraform skeleton
+- Cloud deployment guide / cloud Terraform roots

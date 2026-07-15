@@ -2,26 +2,13 @@
 
 ## Purpose
 
-This future module will define model registry and artifact storage resources.
+Stores logical model registry metadata in Kubernetes for the approved serving pin.
 
-## Planned Responsibilities
+## Responsibilities
 
-- Create model artifact storage
-- Configure access policy
-- Configure registry metadata storage
-- Define retention policy
-- Support model promotion and rollback workflows
+- Create `model-registry-config` ConfigMap
+- Hold registered model name, alias, artifact path, and registry-enable flag
 
-## Required Concepts
+## Current status
 
-| Concept | Purpose |
-|---|---|
-| Registered model | Logical model name |
-| Model alias | Approved serving pointer |
-| Artifact store | Stores model files |
-| Metadata store | Stores run and registry metadata |
-| Checksum | Validates artifact integrity |
-
-## Current Status
-
-Placeholder only.
+Implemented as local metadata ConfigMap. Full cloud registry resources are future work.

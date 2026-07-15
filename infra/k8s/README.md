@@ -5,6 +5,10 @@
 Run the Lumina Rec **inference** service on local Kubernetes while MLflow, MinIO,
 and Postgres continue on Docker Compose.
 
+For day-to-day ownership of this workload, prefer Terraform
+(`..\terraform\README.md` / `scripts\terraform.ps1`). This folder and
+`scripts\k8s.ps1` remain the manual kubectl/kustomize path.
+
 ## Prerequisites
 
 1. Docker Desktop Kubernetes enabled (`kubectl get nodes` shows a Ready node).
