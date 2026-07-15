@@ -13,7 +13,7 @@ The application itself is treated as a stable training target. Infra work focuse
 |---|---|
 | Docker Compose (local core stack) | Done — primary local runtime |
 | Inference Dockerfile | Done — `services/inference/Dockerfile` |
-| Kubernetes | Not started |
+| Kubernetes | In progress — inference on Docker Desktop K8s (`infra/k8s`) |
 | Terraform | Placeholder folders only (no `.tf` yet) |
 
 ## Local Docker Stack (core)
@@ -82,17 +82,30 @@ environment over `.env`.
 
 CI validates image build + Compose config. Full `/ready` serving checks are local.
 
+## Local Kubernetes (inference)
+
+Docker Desktop Kubernetes runs inference; Compose keeps MLflow/MinIO/Postgres.
+
+```powershell
+.\scripts\k8s.ps1 deploy
+kubectl -n lumina-rec port-forward svc/inference 8002:8000
+.\scripts\k8s.ps1 ready
+```
+
+Details: [`infra/k8s/README.md`](k8s/README.md).
+
 ## Training Roadmap (infra)
 
 1. **Docker** — Harden image/Compose/CI (**done**)
-2. **Kubernetes** — Deploy the same inference image locally (Kind/k3d)
+2. **Kubernetes** — Deploy inference on Docker Desktop K8s (**in progress**)
 3. **Terraform** — Codify a `dev` environment under `infra/terraform/`
 
-## Planned Folders
+## Folders
 
 | Folder | Purpose |
 |---|---|
-| terraform | Infrastructure as code |
+| k8s | Local Kubernetes manifests for inference |
+| terraform | Infrastructure as code (placeholder) |
 | terraform/environments | Environment-specific settings |
 | terraform/modules | Reusable modules (`inference_service`, `model_registry`) |
 
