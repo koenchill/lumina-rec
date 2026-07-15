@@ -1,7 +1,6 @@
 import hashlib
 import json
 import os
-import sys
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -13,13 +12,9 @@ import torch.nn as nn
 from dotenv import load_dotenv
 from torch.utils.data import DataLoader, TensorDataset
 
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from ml.evaluation.evaluate_recommender import evaluate_ranking_metrics
-from ml.validation.artifact_manifest import write_artifact_manifest
+from lumina_rec.evaluation.evaluate_recommender import evaluate_ranking_metrics
+from lumina_rec.models import MatrixFactorizationModel
+from lumina_rec.validation.artifact_manifest import write_artifact_manifest
 
 load_dotenv()
 
@@ -50,28 +45,6 @@ LEARNING_RATE = 0.01
 
 RANKING_K = 10
 RELEVANCE_THRESHOLD = 4.0
-
-
-class MatrixFactorizationModel(nn.Module):
-    def __init__(self, num_users: int, num_movies: int, embedding_dim: int):
-        super().__init__()
-
-        self.user_embedding = nn.Embedding(num_users, embedding_dim)
-        self.movie_embedding = nn.Embedding(num_movies, embedding_dim)
-        self.user_bias = nn.Embedding(num_users, 1)
-        self.movie_bias = nn.Embedding(num_movies, 1)
-        self.global_bias = nn.Parameter(torch.zeros(1))
-
-    def forward(self, user_idx: torch.Tensor, movie_idx: torch.Tensor) -> torch.Tensor:
-        user_vector = self.user_embedding(user_idx)
-        movie_vector = self.movie_embedding(movie_idx)
-
-        dot_product = (user_vector * movie_vector).sum(dim=1)
-        user_bias = self.user_bias(user_idx).squeeze()
-        movie_bias = self.movie_bias(movie_idx).squeeze()
-
-        rating = dot_product + user_bias + movie_bias + self.global_bias
-        return torch.clamp(rating, min=0.5, max=5.0)
 
 
 def download_movielens_dataset() -> None:

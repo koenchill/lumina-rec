@@ -3,7 +3,7 @@ from collections import defaultdict
 import pandas as pd
 import torch
 
-from ml.evaluation.ranking_metrics import (
+from lumina_rec.evaluation.ranking_metrics import (
     catalog_coverage,
     ndcg_at_k,
     precision_at_k,
