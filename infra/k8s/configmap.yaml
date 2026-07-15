@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inference-config
+  namespace: lumina-rec
+  labels:
+    app.kubernetes.io/name: inference
+    app.kubernetes.io/part-of: lumina-rec
+data:
+  # Compose MLflow/MinIO/Postgres stay on the Docker Desktop host.
+  MLFLOW_TRACKING_URI: http://host.docker.internal:5000
+  MLFLOW_S3_ENDPOINT_URL: http://host.docker.internal:9000
+  AWS_ACCESS_KEY_ID: minio
+  MODEL_ARTIFACT_PATH: approved_model
+  USE_MODEL_REGISTRY: "false"
+  REGISTERED_MODEL_NAME: lumina-rec-movielens-mf
+  MODEL_ALIAS: approved
+  LUMINA_RATE_LIMIT: 300/minute
+  PYTHONPATH: /app/src:/app
